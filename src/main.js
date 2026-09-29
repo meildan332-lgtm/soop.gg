@@ -27,14 +27,15 @@ function getFiltered() {
 }
 
 function header() {
-  return `<header class="site-header"><button class="brand" data-home aria-label="홈으로"><span class="brand-mark">S</span><span>SOOP 엠블럼 랭킹<small>비공식 팬 정보 사이트</small></span></button><span class="update"><i></i> 샘플 데이터 · 2026.09.29</span></header>`;
+  return `<header class="site-header"><div class="header-inner"><button class="brand" data-home aria-label="홈으로"><span class="brand-mark">S</span><span>SOOP.GG<small>EMBLEM TRACKER</small></span></button><nav aria-label="주요 메뉴"><button class="nav-active" data-home>랭킹</button><button id="nav-imminent">승급 임박</button><button>등급표</button></nav><span class="update"><b>DEMO</b> 샘플 데이터 · 2026.09.29</span></div></header>`;
 }
 
 function controls() {
-  return `<section class="intro"><div><span class="eyebrow">STREAMER EMBLEM INDEX</span><h1>엠블럼의 다음 장면까지.</h1><p>스트리머의 현재 등급, 누적 유저와 다음 목표를 한눈에 확인하세요.</p></div><div class="stat"><strong>12</strong><span>등록 스트리머</span></div></section>
-  <section class="search-panel" aria-label="스트리머 검색과 필터"><label class="search"><span>⌕</span><input id="search" type="search" value="${escapeHtml(state.query)}" placeholder="스트리머 닉네임 또는 SOOP ID 검색" autocomplete="off"/><kbd>/</kbd></label>
-  <div class="category-row">${categories.map(c => `<button class="chip ${state.category === c ? 'active' : ''}" data-category="${c}">${c}</button>`).join('')}</div>
-  <div class="filter-row"><div><select id="tier" aria-label="등급 필터">${['전체 등급','미등급','실버','골드','플래티넘','에메랄드','다이아','프레스티지'].map(v => `<option ${state.tier === v ? 'selected' : ''}>${v}</option>`).join('')}</select><select id="sort" aria-label="정렬 방식">${['누적 유저 많은 순','누적 유저 적은 순','다음 등급 임박 순','닉네임 가나다순'].map(v => `<option ${state.sort === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div><button class="imminent ${state.imminent ? 'active' : ''}" id="imminent">${state.imminent ? '✓' : '↗'} 승급 임박</button></div></section>`;
+  const imminentCount = streamers.filter(s => getTierInfo(s.cumulativeUsers).next && getTierInfo(s.cumulativeUsers).progress >= 80).length;
+  const topTier = getTierInfo(Math.max(...streamers.map(s => s.cumulativeUsers))).current.name;
+  return `<section class="search-hero"><div><span class="eyebrow">SOOP EMBLEM TRACKER</span><h1>스트리머를 검색하세요</h1><p>닉네임이나 SOOP ID로 엠블럼 전적을 바로 확인할 수 있어요.</p></div><label class="search"><span>⌕</span><input id="search" type="search" value="${escapeHtml(state.query)}" placeholder="스트리머 닉네임 또는 SOOP ID" autocomplete="off"/><button type="button" aria-label="검색">검색</button></label></section>
+  <section class="dashboard-stats" aria-label="랭킹 요약"><article><span class="stat-icon purple">♜</span><div><small>등록 스트리머</small><strong>${streamers.length}<i>명</i></strong><p>현재 데모 데이터 기준</p></div></article><article><span class="stat-icon blue">◆</span><div><small>최고 엠블럼</small><strong>${topTier}</strong><p>전체 랭킹 1위 기준</p></div></article><article><span class="stat-icon orange">↗</span><div><small>승급 임박</small><strong>${imminentCount}<i>명</i></strong><p>구간 진행률 80% 이상</p></div></article><article><span class="stat-icon green">◷</span><div><small>데이터 상태</small><strong>DEMO</strong><p>실제 SOOP 데이터 아님</p></div></article></section>
+  <section class="rank-tools" aria-label="스트리머 검색과 필터"><div class="category-row">${categories.map(c => `<button class="chip ${state.category === c ? 'active' : ''}" data-category="${c}">${c}</button>`).join('')}</div><div class="filter-row"><div><select id="tier" aria-label="등급 필터">${['전체 등급','미등급','실버','골드','플래티넘','에메랄드','다이아','프레스티지'].map(v => `<option ${state.tier === v ? 'selected' : ''}>${v}</option>`).join('')}</select><select id="sort" aria-label="정렬 방식">${['누적 유저 많은 순','누적 유저 적은 순','다음 등급 임박 순','닉네임 가나다순'].map(v => `<option ${state.sort === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div><button class="imminent ${state.imminent ? 'active' : ''}" id="imminent">${state.imminent ? '✓' : '↗'} 승급 임박</button></div></section>`;
 }
 
 function row(s, index) {
@@ -53,7 +54,7 @@ function row(s, index) {
 
 function renderList() {
   const items = getFiltered();
-  app.innerHTML = `${header()}<main>${controls()}<div class="list-head"><div><strong>${state.category === '전체' ? '전체' : state.category} 랭킹</strong><span>${items.length}명의 스트리머</span></div><span>현재 등급과 다음 목표</span></div>
+  app.innerHTML = `${header()}<main>${controls()}<div class="list-head"><div><span class="rank-title-icon">≡</span><strong>${state.category === '전체' ? '전체' : state.category} 스트리머 랭킹</strong><span>${items.length}명</span></div><span>업데이트 2026.09.29 · 샘플 데이터</span></div>
   <section class="streamer-list">${items.length ? items.map(row).join('') : `<div class="empty"><strong>조건에 맞는 스트리머가 없어요.</strong><span>검색어나 필터를 바꿔보세요.</span><button id="reset">필터 초기화</button></div>`}</section>
   <footer><p>본 사이트는 SOOP 공식 서비스가 아닌 팬 제작 정보 사이트입니다.</p><p>현재 화면의 데이터는 UI 확인을 위한 샘플이며 실제 수치와 다를 수 있습니다.</p></footer></main>`;
   bindList();
@@ -88,6 +89,7 @@ function bindList() {
   document.querySelector('#tier').onchange = e => { state.tier = e.target.value; renderList(); };
   document.querySelector('#sort').onchange = e => { state.sort = e.target.value; renderList(); };
   document.querySelector('#imminent').onclick = () => { state.imminent = !state.imminent; if (state.imminent) state.sort = '다음 등급 임박 순'; renderList(); };
+  document.querySelector('#nav-imminent')?.addEventListener('click', () => { state.imminent = true; state.sort = '다음 등급 임박 순'; renderList(); });
   document.querySelectorAll('[data-streamer]').forEach(el => { el.onclick = () => navigate(el.dataset.streamer); el.onkeydown = e => { if (e.key === 'Enter') navigate(el.dataset.streamer); }; });
   document.querySelector('#reset')?.addEventListener('click', () => { Object.assign(state, { query: '', category: '전체', tier: '전체 등급', sort: '누적 유저 많은 순', imminent: false }); renderList(); });
 }
