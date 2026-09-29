@@ -8,6 +8,7 @@ const state = { query: '', category: '전체', tier: '전체 등급', sort: '누
 let loadError = '';
 let searchBusy = false;
 let listObserver;
+let draftQuery = '';
 const streamerAliases = new Map([
   ['철구', 'y1026'], ['철구형', 'y1026'], ['철구형2', 'y1026'], ['철구형2↑', 'y1026']
 ]);
@@ -59,12 +60,12 @@ async function loadCategoryBatch({ reset = false } = {}) {
 
 function header() {
   const updated = lastUpdated ? lastUpdated.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '불러오는 중';
-  return `<header class="site-header"><div class="header-inner"><button class="brand" data-home aria-label="홈으로"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/></button><nav aria-label="주요 메뉴"><button class="nav-active" data-home>랭킹</button><button id="nav-imminent">승급 임박</button><button>등급표</button></nav><span class="update"><b>LIVE DATA</b> SOOP 공개 데이터 · ${updated}</span></div></header>`;
+  return `<header class="site-header"><div class="header-inner"><button class="brand" data-home aria-label="홈으로"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/></button><nav aria-label="주요 메뉴"><button class="nav-active" data-home>랭킹</button><button id="nav-imminent">승급 임박</button><div class="category-menu"><button id="nav-category">카테고리</button><div class="category-dropdown" aria-label="카테고리 메뉴">${categories.filter(c => c !== '전체').map(c => `<button data-nav-category="${c}">${c}</button>`).join('')}</div></div></nav><span class="update"><b>LIVE DATA</b> SOOP 공개 데이터 · ${updated}</span></div></header>`;
 }
 
 function controls() {
-  return `<section class="search-hero"><button class="search-brand-button" type="button" data-home aria-label="메인 화면으로"><img class="search-brand" src="/brand/soopgg-logo.png" alt="SOOP.GG"/></button><label class="search"><span>⌕</span><input id="search" type="search" value="${escapeHtml(state.query)}" placeholder="닉네임 검색 또는 SOOP ID 입력" autocomplete="off"/><button type="button" id="search-submit" aria-label="SOOP 채널 검색" ${searchBusy ? 'disabled' : ''}>${searchBusy ? '조회 중' : '검색'}</button></label>${loadError ? `<p class="data-error" role="alert">${escapeHtml(loadError)}</p>` : ''}</section>
-  <section class="rank-tools" aria-label="스트리머 검색과 필터"><div class="category-row">${categories.map(c => `<button class="chip ${state.category === c ? 'active' : ''}" data-category="${c}">${c}</button>`).join('')}</div><div class="filter-row"><div><select id="tier" aria-label="등급 필터">${['전체 등급','미등급','실버','골드','플래티넘','에메랄드','다이아','프레스티지'].map(v => `<option ${state.tier === v ? 'selected' : ''}>${v}</option>`).join('')}</select><select id="sort" aria-label="정렬 방식">${['누적 유저 많은 순','누적 유저 적은 순','다음 등급 임박 순','닉네임 가나다순'].map(v => `<option ${state.sort === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div><button class="imminent ${state.imminent ? 'active' : ''}" id="imminent">${state.imminent ? '✓' : '↗'} 승급 임박</button></div></section>`;
+  return `<section class="search-hero"><button class="search-brand-button" type="button" data-home aria-label="메인 화면으로"><img class="search-brand" src="/brand/soopgg-logo.png" alt="SOOP.GG"/></button><label class="search"><span>⌕</span><input id="search" type="search" value="${escapeHtml(draftQuery)}" placeholder="닉네임 검색 또는 SOOP ID 입력" autocomplete="off"/><button type="button" id="search-submit" aria-label="SOOP 채널 검색" ${searchBusy ? 'disabled' : ''}>${searchBusy ? '조회 중' : '검색'}</button></label>${loadError ? `<p class="data-error" role="alert">${escapeHtml(loadError)}</p>` : ''}</section>
+  <section class="rank-tools" aria-label="스트리머 검색과 필터"><div class="category-row">${categories.map(c => `<button class="chip ${state.category === c ? 'active' : ''}" data-category="${c}">${c}</button>`).join('')}<select id="tier" aria-label="등급 필터">${['전체 등급','미등급','실버','골드','플래티넘','에메랄드','다이아','프레스티지'].map(v => `<option ${state.tier === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div></section>`;
 }
 
 function row(s, index) {
@@ -119,7 +120,7 @@ function chart(s) {
 
 function renderDetail(id) {
   const s = streamers.find(x => x.soopId === id);
-  if (!s) { history.replaceState({}, '', '/'); renderList(); return; }
+  if (!s) { renderDetailError(id); return; }
   const requestedPeriod = new URLSearchParams(location.search).get('period');
   if (['daily', 'monthly', 'yearly'].includes(requestedPeriod)) state.period = requestedPeriod;
   const info = getTierInfo(s.cumulativeUsers);
@@ -128,46 +129,69 @@ function renderDetail(id) {
   const stationUrl = `https://www.sooplive.com/station/${encodeURIComponent(s.soopId)}`;
   const liveUrl = s.broadNo ? `https://play.sooplive.com/${encodeURIComponent(s.soopId)}/${s.broadNo}` : stationUrl;
   const livePanel = s.isLive ? `<a class="live-card" href="${liveUrl}" target="_blank" rel="noopener noreferrer"><span class="live-thumb" style="--accent:${s.accent}"><img src="${escapeHtml(s.liveThumbnail)}" alt="${escapeHtml(s.nickname)} 라이브 방송 썸네일" referrerpolicy="no-referrer"/><b><i></i> ${s.liveViewers.toLocaleString('ko-KR')}</b><strong>${escapeHtml(s.initials)}</strong></span><span class="live-title"><i>LIVE</i><span>${escapeHtml(s.liveTitle || '현재 라이브 방송')}</span></span></a>` : `<a class="station" href="${stationUrl}" target="_blank" rel="noopener noreferrer">SOOP 방송국 바로가기</a>`;
-  app.innerHTML = `${header()}<main class="detail"><button class="back" data-home>‹ 전체 랭킹으로</button>
+  app.innerHTML = `${header()}<main class="detail"><form class="detail-search" id="detail-search"><span>⌕</span><input id="detail-search-input" value="" placeholder="닉네임 또는 SOOP ID 검색" autocomplete="off"/><button>검색</button></form><button class="back" data-home>‹ 전체 랭킹으로</button>
     <section class="profile-hero"><div class="profile-main">${rankedAvatar(s, info.current)}<div><span class="category">${s.category}</span><h1>${escapeHtml(s.nickname)} <em>SOOP</em></h1><p>@${escapeHtml(s.soopId)}</p></div></div>${livePanel}</section>
     <section class="profile-stats" aria-label="스트리머 주요 정보">
       <article><span class="metric-icon purple">◷</span><div><small>총 방송 시간</small><strong>${s.totalBroadcastHours.toLocaleString('ko-KR')}<i>시간</i></strong></div></article>
       <article><span class="metric-icon blue">◉</span><div><small>누적 유저</small><strong>${s.cumulativeUsers.toLocaleString('ko-KR')}<i>명</i></strong></div></article>
       <article><span class="metric-icon favorite" aria-hidden="true">★</span><div><small>애청자 수</small><strong>${s.followers.toLocaleString('ko-KR')}<i>명</i></strong></div></article>
-      <article class="subscriber-stat"><span class="metric-icon subscribe" aria-hidden="true"><i>▶</i></span><div><small>구독팬 수</small><strong>${(s.subscribers.basic + s.subscribers.plus).toLocaleString('ko-KR')}<i>명</i></strong><p><b>베이직 ${s.subscribers.basic.toLocaleString('ko-KR')}</b><b>플러스 ${s.subscribers.plus.toLocaleString('ko-KR')}</b></p></div></article>
-      <article><span class="metric-icon fanclub" aria-hidden="true">♥</span><div><small>팬클럽 수</small><strong>${s.fanClub == null ? '미제공' : `${s.fanClub.toLocaleString('ko-KR')}<i>명</i>`}</strong></div></article>
+      <article class="subscriber-stat"><span class="metric-icon subscribe" aria-hidden="true"><i></i></span><div><small>구독팬 수</small><strong>${(s.subscribers.basic + s.subscribers.plus).toLocaleString('ko-KR')}<i>명</i></strong><p><b>베이직 ${s.subscribers.basic.toLocaleString('ko-KR')}</b><b>플러스 ${s.subscribers.plus.toLocaleString('ko-KR')}</b></p></div></article>
     </section>
-    <section class="tier-card" style="--tier:${info.current.color}"><div class="tier-visual">${rankCrest(info.current)}<span>CURRENT EMBLEM</span><strong>${info.current.name}</strong></div><div class="tier-numbers"><div><span>현재 누적 유저</span><strong>${s.cumulativeUsers.toLocaleString('ko-KR')}</strong></div><div><span>다음 목표</span><strong>${info.next ? `${info.next.name} · ${formatCompact(info.next.min)}` : '최고 등급 달성'}</strong></div><div class="detail-progress"><div><span>${info.next ? `${formatCompact(info.remaining)} 남음` : '모든 등급 완료'}</span><strong>${info.progress.toFixed(1)}%</strong></div><div class="progress"><i style="width:${info.progress}%"></i></div></div></div></section>
+    <section class="tier-card" style="--tier:${info.current.color}"><div class="tier-visual">${rankCrest(info.current)}<strong>${info.current.name}</strong></div><div class="tier-numbers"><div><span>현재 누적 유저</span><strong>${s.cumulativeUsers.toLocaleString('ko-KR')}</strong></div><div><span>다음 목표</span><strong>${info.next ? `${info.next.name} · ${formatCompact(info.next.min)}` : '최고 등급 달성'}</strong></div><div class="detail-progress"><div><span>${info.next ? `${formatCompact(info.remaining)} 남음` : '모든 등급 완료'}</span><strong>${info.progress.toFixed(1)}%</strong></div><div class="progress"><i style="width:${info.progress}%"></i></div></div></div></section>
     <section class="detail-grid"><article class="panel history"><div class="panel-title"><div><span>GROWTH</span><h2>누적 유저 변화</h2></div><div class="growth-summary">${periodGrowth == null ? '' : `<strong>+${formatCompact(periodGrowth)}<small>선택 기간 증가량</small></strong>`}<div class="period-tabs" role="tablist" aria-label="성장 그래프 기간">${[['daily','일별'],['monthly','월별'],['yearly','연별']].map(([key,label]) => `<a role="tab" aria-selected="${state.period === key}" class="${state.period === key ? 'active' : ''}" href="/streamer/${encodeURIComponent(id)}?period=${key}">${label}</a>`).join('')}</div></div></div>${chart(s)}</article><article class="panel log"><div class="panel-title"><div><span>EMBLEM LOG</span><h2>등급 변경 기록</h2></div></div><div class="timeline"><i></i><div><strong>${info.current.name}</strong><span>현재 SOOP 누적 조회수 기준 자동 계산</span></div></div><div class="timeline muted"><i></i><div><strong>${info.next ? `${info.next.name} 도전 중` : '최고 등급 유지 중'}</strong><span>${info.next ? `${info.progress.toFixed(1)}% 진행` : '프레스티지'}</span></div></div><p>등급 변경 기록은 실제 데이터가 축적된 이후 표시됩니다.</p></article></section>
     <footer><p>본 사이트는 SOOP 공식 서비스가 아닌 팬 제작 정보 사이트입니다.</p><p>${escapeHtml(s.dataSource)} · ${new Date(s.lastUpdated).toLocaleString('ko-KR')} 기준</p></footer></main>`;
   bindHome();
+  bindDetailSearch();
+}
+
+function renderDetailError(id) {
+  app.innerHTML = `${header()}<main class="detail"><form class="detail-search" id="detail-search"><span>⌕</span><input id="detail-search-input" value="${escapeHtml(id)}" placeholder="닉네임 또는 SOOP ID 검색" autocomplete="off"/><button>검색</button></form><section class="detail-error"><strong>스트리머 정보를 불러오지 못했습니다.</strong><span>SOOP ID를 확인한 뒤 다시 검색해 주세요.</span></section></main>`;
+  bindHome(); bindDetailSearch();
 }
 
 function navigate(id) { history.pushState({}, '', `/streamer/${id}`); renderDetail(id); window.scrollTo(0,0); }
-function bindHome() { document.querySelectorAll('[data-home]').forEach(el => el.onclick = () => { history.pushState({}, '', '/'); renderList(); }); }
+async function openCategory(category) {
+  state.category = category;
+  history.pushState({}, '', '/');
+  app.innerHTML = `<main class="loading-state"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/><strong>SOOP에서 데이터를 불러오고 있습니다</strong></main>`;
+  try { await loadCategoryBatch({ reset: true }); loadError = ''; } catch (error) { loadError = error.message; }
+  renderList();
+}
+function bindHome() {
+  document.querySelectorAll('[data-home]').forEach(el => el.onclick = () => { history.pushState({}, '', '/'); renderList(); });
+  document.querySelector('#nav-category')?.addEventListener('click', () => { history.pushState({}, '', '/'); renderList(); document.querySelector('.rank-tools')?.scrollIntoView({ behavior: 'smooth' }); });
+  document.querySelectorAll('[data-nav-category]').forEach(el => el.onclick = () => openCategory(el.dataset.navCategory));
+}
+async function resolveStreamer(query) {
+  const entered = query.trim().replace(/^@/, '');
+  const id = streamerAliases.get(entered) || entered;
+  const local = streamers.find(s => s.soopId.toLowerCase() === id.toLowerCase() || s.nickname.toLowerCase() === entered.toLowerCase());
+  return local || addStreamer(id);
+}
+function bindDetailSearch() {
+  document.querySelector('#detail-search')?.addEventListener('submit', async event => {
+    event.preventDefault();
+    const input = document.querySelector('#detail-search-input');
+    const query = input.value.trim();
+    if (!query) return;
+    input.disabled = true;
+    try { const streamer = await resolveStreamer(query); navigate(streamer.soopId); }
+    catch { input.disabled = false; input.setCustomValidity('스트리머를 찾을 수 없습니다.'); input.reportValidity(); }
+  });
+}
 function bindList() {
   bindHome();
   const search = document.querySelector('#search');
-  let composing = false;
-  search.addEventListener('compositionstart', () => { composing = true; });
-  search.addEventListener('compositionend', e => { composing = false; state.query = e.target.value; renderList(); });
-  search.addEventListener('input', e => {
-    state.query = e.target.value;
-    if (composing || e.isComposing) return;
-    renderList();
-    document.querySelector('#search').focus();
-    document.querySelector('#search').setSelectionRange(state.query.length, state.query.length);
-  });
+  search.addEventListener('input', e => { draftQuery = e.target.value; });
   const submitSearch = async () => {
-    const enteredQuery = state.query.trim().replace(/^@/, '');
-    const query = streamerAliases.get(enteredQuery) || enteredQuery;
+    const query = draftQuery.trim();
+    if (!query) { state.query = ''; renderList(); return; }
     const local = streamers.find(s => s.soopId.toLowerCase() === query.toLowerCase() || s.nickname.toLowerCase() === query.toLowerCase());
     if (local) { navigate(local.soopId); return; }
-    if (!query) return;
     searchBusy = true; loadError = ''; renderList();
     try {
-      const streamer = await addStreamer(query);
-      state.query = '';
+      const streamer = await resolveStreamer(query);
+      state.query = ''; draftQuery = '';
       searchBusy = false;
       navigate(streamer.soopId);
     } catch (error) {
@@ -178,19 +202,11 @@ function bindList() {
   };
   document.querySelector('#search-submit')?.addEventListener('click', submitSearch);
   search.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); submitSearch(); } });
-  document.querySelectorAll('[data-category]').forEach(b => b.onclick = async () => {
-    state.category = b.dataset.category;
-    app.innerHTML = `<main class="loading-state"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/><strong>${escapeHtml(state.category)} 스트리머를 불러오는 중입니다</strong><span>SOOP 목록을 확인하고 있어요.</span></main>`;
-    try { await loadCategoryBatch({ reset: true }); loadError = ''; }
-    catch (error) { loadError = error.message; }
-    renderList();
-  });
+  document.querySelectorAll('[data-category]').forEach(b => b.onclick = () => openCategory(b.dataset.category));
   document.querySelector('#tier').onchange = e => { state.tier = e.target.value; renderList(); };
-  document.querySelector('#sort').onchange = e => { state.sort = e.target.value; renderList(); };
-  document.querySelector('#imminent').onclick = () => { state.imminent = !state.imminent; if (state.imminent) state.sort = '다음 등급 임박 순'; renderList(); };
   document.querySelector('#nav-imminent')?.addEventListener('click', () => { state.imminent = true; state.sort = '다음 등급 임박 순'; renderList(); });
   document.querySelectorAll('[data-streamer]').forEach(el => { el.onclick = () => navigate(el.dataset.streamer); el.onkeydown = e => { if (e.key === 'Enter') navigate(el.dataset.streamer); }; });
-  document.querySelector('#reset')?.addEventListener('click', () => { Object.assign(state, { query: '', category: '전체', tier: '전체 등급', sort: '누적 유저 많은 순', imminent: false }); renderList(); });
+  document.querySelector('#reset')?.addEventListener('click', () => { draftQuery = ''; Object.assign(state, { query: '', category: '전체', tier: '전체 등급', sort: '누적 유저 많은 순', imminent: false }); renderList(); });
 }
 
 window.addEventListener('popstate', route);
@@ -200,12 +216,12 @@ async function route() {
   if (match) {
     const id = decodeURIComponent(match[1]);
     if (!streamers.some(s => s.soopId === id)) {
-      try { await addStreamer(id); } catch { history.replaceState({}, '', '/'); }
+      try { await addStreamer(id); } catch { renderDetailError(id); return; }
     }
   }
   const current = location.pathname.match(/^\/streamer\/([^/]+)/);
   current ? renderDetail(decodeURIComponent(current[1])) : renderList();
 }
 
-app.innerHTML = `<main class="loading-state"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/><strong>SOOP 실제 데이터를 불러오는 중입니다</strong><span>공개 채널 정보를 확인하고 있어요.</span></main>`;
+app.innerHTML = `<main class="loading-state"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/><strong>SOOP에서 데이터를 불러오고 있습니다</strong></main>`;
 loadStreamers().then(route).catch(error => { loadError = error.message; renderList(); });

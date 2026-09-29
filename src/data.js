@@ -91,6 +91,7 @@ export let streamers = [];
 export let lastUpdated = null;
 export let hasMoreStreamers = true;
 export let streamersLoading = false;
+const streamerCache = new Map();
 let directoryPage = 0;
 let activeDirectoryCategory = 'all';
 let activePageSize = 100;
@@ -104,6 +105,13 @@ const directoryCategory = {
 export async function fetchStreamer(soopId, overrides = {}) {
   const id = String(soopId || '').trim().replace(/^@/, '');
   if (!/^[0-9A-Za-z_-]{2,40}$/.test(id)) throw new Error('올바른 SOOP ID를 입력해 주세요.');
+  const cached = streamerCache.get(id.toLowerCase());
+  if (cached) return {
+    ...cached,
+    soopId: id,
+    accent: overrides.accent || cached.accent,
+    officialRank: overrides.officialRank || cached.officialRank
+  };
   const requestOptions = { headers: { Accept: 'application/json' }, credentials: 'omit' };
   const [stationResponse, vodResponse] = await Promise.all([
     fetch(`${SOOP_API}/${encodeURIComponent(id)}/station`, requestOptions),
@@ -114,7 +122,9 @@ export async function fetchStreamer(soopId, overrides = {}) {
     stationResponse.json(),
     vodResponse?.ok ? vodResponse.json().catch(() => null) : null
   ]);
-  return mapStation(stationData, { soopId: id, category: '기타', accent: '#7968ff', ...overrides }, primaryCategory(vodData));
+  const streamer = mapStation(stationData, { soopId: id, category: '기타', accent: '#7968ff', ...overrides }, primaryCategory(vodData));
+  streamerCache.set(id.toLowerCase(), streamer);
+  return streamer;
 }
 
 async function fetchDirectoryPage(page, category, pageSize) {

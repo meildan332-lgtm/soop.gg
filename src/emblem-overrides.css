@@ -129,7 +129,6 @@
 .profile-stats .metric-icon.purple { color: #9a7bff; text-shadow: 0 0 12px rgba(154,123,255,.22); }
 .profile-stats .metric-icon.blue { color: #58adff; text-shadow: 0 0 12px rgba(88,173,255,.22); }
 .metric-icon.favorite { color: #ffc928; text-shadow: 0 0 12px rgba(255,201,40,.24); }
-.metric-icon.fanclub { color: #ff5f87; text-shadow: 0 0 12px rgba(255,95,135,.22); }
 .metric-icon.subscribe i {
   width: 20px;
   height: 18px;
@@ -137,13 +136,15 @@
   place-items: center;
   clip-path: polygon(19% 0,81% 0,100% 28%,100% 72%,81% 100%,19% 100%,0 72%,0 28%);
   background: #f04968;
-  color: #fff;
-  font-size: 8px;
+  color: transparent;
+  font-size: 0;
   font-style: normal;
   line-height: 1;
   padding-left: 1px;
   box-shadow: 0 0 12px rgba(240,73,104,.25);
+  position: relative;
 }
+.metric-icon.subscribe i:after{content:'★';color:#11151d;font-size:9px;line-height:1;position:absolute;inset:0;display:grid;place-items:center}
 
 /* Brand-led search layout */
 .brand img {
