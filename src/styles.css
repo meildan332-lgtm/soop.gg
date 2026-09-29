@@ -22,7 +22,7 @@
 .growth-summary{display:flex;align-items:flex-start;gap:18px}.growth-summary>strong{color:#6de3bd;font-size:18px;text-align:right}.growth-summary>strong small{display:block;color:var(--muted);font-size:9px;margin-top:3px}.period-tabs{display:flex;background:#101218;border:1px solid #2c323d;border-radius:6px;padding:3px}.period-tabs a{border:0;background:transparent;color:#747d8c;border-radius:4px;padding:5px 9px;font-size:10px;cursor:pointer;text-decoration:none}.period-tabs a:hover{color:#c5cbd5}.period-tabs a.active{color:#ece9ff;background:#5f49cc;box-shadow:0 2px 8px rgba(80,58,184,.28)}
 @media(max-width:640px){.history .panel-title{display:block}.growth-summary{margin-top:12px;justify-content:space-between;align-items:center}.growth-summary>strong{text-align:left}.period-tabs a{padding:6px 11px}.chart{margin-top:16px}}
 
-.category-dropdown button{white-space:nowrap}.list-actions{display:flex;align-items:center;gap:12px}.list-actions>span{white-space:nowrap;margin-left:0}.list-actions select{flex:0 0 auto}
+.category-dropdown{width:min(250px,calc(100vw - 24px));grid-template-columns:repeat(2,minmax(0,1fr))}.category-dropdown button{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.list-actions{display:flex;align-items:center;gap:12px}.list-actions>span{white-space:nowrap;margin-left:0}.list-actions select{flex:0 0 auto}
 @media(max-width:640px){.list-actions>span{display:none}.list-head{align-items:center}.list-actions select{max-width:132px}}
 
 /* Tier-specific competitive emblems */
