@@ -164,7 +164,7 @@ export async function loadStreamers({ reset = true, category = '전체' } = {}) 
     if (nextPage !== 1 || activeDirectoryCategory !== 'all') { streamersLoading = false; throw error; }
     directory = { ids: rankedIds, page: 1, totalPages: 1 };
   }
-  const known = new Set(streamers.map(item => item.soopId));
+  const known = new Set(streamers.filter(item => !item.searchOnly).map(item => item.soopId));
   const seeds = directory.ids.filter(id => !known.has(id)).map((soopId, index) => ({
     soopId, category: activeDirectoryCategory === 'all' ? '기타' : category,
     categoryGroup: activeDirectoryCategory === 'all' ? '기타' : category,
@@ -180,7 +180,8 @@ export async function loadStreamers({ reset = true, category = '전체' } = {}) 
   }
   await Promise.all(Array.from({ length: 10 }, worker));
   loaded.sort((a, b) => a.officialRank - b.officialRank);
-  streamers = [...streamers, ...loaded];
+  const loadedIds = new Set(loaded.map(item => item.soopId.toLowerCase()));
+  streamers = [...streamers.filter(item => !(item.searchOnly && loadedIds.has(item.soopId.toLowerCase()))), ...loaded];
   directoryPage = nextPage;
   hasMoreStreamers = nextPage < directory.totalPages && directory.ids.length > 0;
   streamersLoading = false;
@@ -192,7 +193,7 @@ export async function loadStreamers({ reset = true, category = '전체' } = {}) 
 export async function addStreamer(soopId) {
   const existing = streamers.find(item => item.soopId.toLowerCase() === soopId.toLowerCase());
   if (existing) return existing;
-  const streamer = await fetchStreamer(soopId);
+  const streamer = { ...await fetchStreamer(soopId), searchOnly: true };
   streamers = [...streamers, streamer];
   lastUpdated = new Date();
   return streamer;
@@ -206,7 +207,7 @@ export async function searchStreamers(keyword) {
   const { ids = [] } = await response.json();
   const found = (await Promise.all(ids.slice(0, 8).map(id => fetchStreamer(id).catch(() => null)))).filter(Boolean);
   const known = new Set(streamers.map(item => item.soopId.toLowerCase()));
-  const added = found.filter(item => !known.has(item.soopId.toLowerCase()));
+  const added = found.filter(item => !known.has(item.soopId.toLowerCase())).map(item => ({ ...item, searchOnly: true }));
   if (added.length) streamers = [...streamers, ...added];
   return found;
 }

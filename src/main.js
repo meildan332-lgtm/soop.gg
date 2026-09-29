@@ -32,7 +32,7 @@ function getFiltered() {
   const q = state.query.trim().toLowerCase();
   const filtered = streamers.filter(s => {
     const info = getTierInfo(s.cumulativeUsers);
-    return (!q || s.nickname.toLowerCase().includes(q) || s.soopId.toLowerCase().includes(q)) &&
+    return !s.searchOnly && (!q || s.nickname.toLowerCase().includes(q) || s.soopId.toLowerCase().includes(q)) &&
       (state.category === '전체' || (s.categoryGroup || s.category) === state.category) &&
       (state.tier === '전체 등급' || info.current.group === state.tier) &&
       (!state.imminent || (info.next && info.progress >= 80));
@@ -46,7 +46,7 @@ function getFiltered() {
 }
 
 const categoryMatchCount = () => streamers.filter(s =>
-  state.category === '전체' || (s.categoryGroup || s.category) === state.category
+  !s.searchOnly && (state.category === '전체' || (s.categoryGroup || s.category) === state.category)
 ).length;
 
 async function loadCategoryBatch({ reset = false } = {}) {
