@@ -23,10 +23,6 @@
 .tier-art-icon { width: 48px; height: 48px; }
 .tier-art-icon img { top: 0; }
 .tier-art-avatar img { top: -76%; }
-.ranked-avatar-prestige .tier-art-avatar img { top: -58%; }
-.ranked-avatar-prestige { width: 112px; height: 112px; }
-.ranked-avatar-prestige .avatar { width: 62px; height: 62px; }
-.ranked-avatar-prestige .tier-art-avatar { inset: 7px; width: 98px; height: 98px; opacity: .86; filter: saturate(.82); }
 .tier-art-crest img { top: -200%; }
 
 .emblem > .emblem-icon {
@@ -62,8 +58,8 @@
   display: none;
 }
 
-.emblem-prestige { width: 62px; height: 58px; margin: -5px -7px; }
-.emblem-prestige > .emblem-icon { transform: scale(1.94); }
+.emblem-prestige { width: 54px; height: 50px; margin: -1px -3px; }
+.emblem-prestige > .emblem-icon { transform: scale(1.5); }
 .emblem-prestige b {
   width: 22px;
   height: 22px;
@@ -83,16 +79,32 @@
 .tier-visual .tier-art-crest.tier-art-prestige { width: 138px; height: 138px; margin: 0 0 2px; opacity: .9; filter: saturate(.84); }
 .tier-art-crest.tier-art-prestige img { height: 250%; top: -145%; }
 
-.ranked-avatar { position: relative; width: 112px; height: 112px; display: grid; place-items: center; flex: 0 0 auto; }
-.ranked-avatar .avatar { position: relative; z-index: 1; width: 62px; height: 62px; border-width: 2px; box-shadow: 0 0 0 4px #10131a, 0 0 24px color-mix(in srgb,var(--tier) 26%,transparent); }
+.ranked-avatar { position: relative; width: 94px; height: 94px; display: grid; place-items: center; flex: 0 0 auto; }
+.ranked-avatar .avatar { position: relative; z-index: 1; width: 62px; height: 62px; border-width: 2px; box-shadow: 0 0 0 3px #10131a, 0 0 20px color-mix(in srgb,var(--tier) 24%,transparent); }
 .ranked-avatar .tier-art-avatar {
   position: absolute;
   z-index: 2;
-  inset: 4px;
-  width: 104px;
-  height: 104px;
+  inset: 0;
+  width: 94px;
+  height: 94px;
   border-radius: 50%;
   pointer-events: none;
+}
+
+.prestige-avatar-frame {
+  position: absolute;
+  z-index: 2;
+  inset: -3px;
+  width: 100px;
+  height: 100px;
+  pointer-events: none;
+}
+
+.prestige-avatar-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 7px rgba(0, 0, 0, .48));
 }
 
 .profile-stats .metric-icon {
@@ -228,8 +240,9 @@
     height: 104px;
   }
 
-  .ranked-avatar { width: 88px; height: 88px; }
+  .ranked-avatar { width: 78px; height: 78px; }
   .ranked-avatar .avatar { width: 50px; height: 50px; }
-  .ranked-avatar .tier-art-avatar { inset: 3px; width: 82px; height: 82px; }
+  .ranked-avatar .tier-art-avatar { inset: 0; width: 78px; height: 78px; }
+  .prestige-avatar-frame { inset: -2px; width: 82px; height: 82px; }
   .tier-visual .tier-art-crest { width: 112px; height: 112px; }
 }
