@@ -1,15 +1,13 @@
 const SOOP_API = 'https://chapi.sooplive.com/api';
 
-const seedChannels = [
-  { soopId: 'phonics1', category: '게임', accent: '#7464ff' },
-  { soopId: 'devil0108', category: '스포츠', accent: '#3e8cff' },
-  { soopId: 'sccha21', category: '게임', accent: '#2dd4bf' },
-  { soopId: 'babysds', category: '게임', accent: '#ff9d43' },
-  { soopId: 'parang1995', category: '버추얼', accent: '#a855f7' },
-  { soopId: 'dbdms139', category: '보이는 라디오', accent: '#f05d8f' },
-  { soopId: 'joreangyee', category: '버추얼', accent: '#fb7185' },
-  { soopId: 'snfl90', category: '보이는 라디오', accent: '#4bd6a5' }
-];
+const rankedIds = `devil0108 lshooooo bigbigjo2 khm11903 rlaeogus200 120510 kissday621 rrvv17 wnnw no3miggi qpwo164 sccha21 horusb zpdl1313 ch1716 jdm1197 dlgksquf159 guslgood2 seokwngud galsa skswhdkgo janjju phonics1 killgusdnk nila25 spbabobj goata111789 yunheehoho leesh2148 zkwks4413 rlaxordyd yuambo bebe010 ecvhao pig2704 joey1114 dkssyddleid aay2014 dpfgc3 eunz1nara sol3712 kimdhun b13246 isauria pi0314 since821 feel0100 gusdk2362 djsrhkwl dlghfjs gyeonjahee partypeople sang033 lyj9306 parang58 m0m099 beatjungle1 unitelshaki rlrlvkvk123 030b1004 skswldms kdb1223 zzzz4422 ansguswns519 lyl9095 thseogks1 jaedong23 1004suna vlfrl2 pookygamja e000e77 wannabe33 moonwol0614 asy1218 gosegu2 eunyoung1238 kogo0512 ehdgkr6283 horidda ksh14 lovely5959 axiaxi umj4635 sky2713 giltae1124 nada11200 sas2055 townboy gtv7 lilpa0309 rkdakstlr911 arinbbidol dmsco39 ayoona jingburger1 golaniyule0 ghth6009 viichan6 jeehyeoun cotton1217`.split(' ');
+const accents = ['#7464ff', '#3e8cff', '#2dd4bf', '#ff9d43', '#a855f7', '#f05d8f', '#fb7185', '#4bd6a5'];
+const seedChannels = rankedIds.map((soopId, index) => ({
+  soopId,
+  category: '기타',
+  accent: accents[index % accents.length],
+  officialRank: index + 1
+}));
 
 const cleanText = (value) => String(value || '').replace(/<[^>]*>/g, '').trim();
 const absoluteImage = (url) => url?.startsWith('//') ? `https:${url}` : (url || '');
@@ -55,8 +53,16 @@ export async function fetchStreamer(soopId, overrides = {}) {
 }
 
 export async function loadStreamers() {
-  const results = await Promise.allSettled(seedChannels.map(seed => fetchStreamer(seed.soopId, seed)));
-  streamers = results.filter(result => result.status === 'fulfilled').map(result => result.value);
+  const loaded = [];
+  let cursor = 0;
+  async function worker() {
+    while (cursor < seedChannels.length) {
+      const seed = seedChannels[cursor++];
+      try { loaded.push(await fetchStreamer(seed.soopId, seed)); } catch { /* unavailable channels are skipped */ }
+    }
+  }
+  await Promise.all(Array.from({ length: 10 }, worker));
+  streamers = loaded;
   lastUpdated = new Date();
   if (!streamers.length) throw new Error('SOOP 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
   return streamers;

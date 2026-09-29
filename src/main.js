@@ -65,7 +65,7 @@ function row(s, index) {
 
 function renderList() {
   const items = getFiltered();
-  app.innerHTML = `${header()}<main>${controls()}<div class="list-head"><div><span class="rank-title-icon">≡</span><strong>${state.category === '전체' ? '전체' : state.category} 스트리머 랭킹</strong><span>${items.length}명</span></div><span>SOOP 공개 채널 데이터 · 페이지를 열 때 갱신</span></div>
+  app.innerHTML = `${header()}<main>${controls()}<div class="list-head"><div><span class="rank-title-icon">≡</span><strong>${state.category === '전체' ? 'SOOP 스트리머 TOP 100' : state.category + ' 스트리머 랭킹'}</strong><span>${items.length}명</span></div><span>SOOP 누적 애청자 상위 100명 · 실제 누적 조회수 순</span></div>
   <section class="streamer-list">${items.length ? items.map(row).join('') : `<div class="empty"><strong>조건에 맞는 스트리머가 없어요.</strong><span>검색어나 필터를 바꿔보세요.</span><button id="reset">필터 초기화</button></div>`}</section>
   <footer><p>본 사이트는 SOOP 공식 서비스가 아닌 팬 제작 정보 사이트입니다.</p><p>수치는 SOOP 공개 채널 응답에서 불러오며, 플랫폼 반영 시점에 따라 차이가 날 수 있습니다.</p></footer></main>`;
   bindList();
@@ -112,7 +112,16 @@ function bindHome() { document.querySelectorAll('[data-home]').forEach(el => el.
 function bindList() {
   bindHome();
   const search = document.querySelector('#search');
-  search.addEventListener('input', e => { state.query = e.target.value; renderList(); document.querySelector('#search').focus(); document.querySelector('#search').setSelectionRange(state.query.length, state.query.length); });
+  let composing = false;
+  search.addEventListener('compositionstart', () => { composing = true; });
+  search.addEventListener('compositionend', e => { composing = false; state.query = e.target.value; renderList(); });
+  search.addEventListener('input', e => {
+    state.query = e.target.value;
+    if (composing || e.isComposing) return;
+    renderList();
+    document.querySelector('#search').focus();
+    document.querySelector('#search').setSelectionRange(state.query.length, state.query.length);
+  });
   const submitSearch = async () => {
     const query = state.query.trim().replace(/^@/, '');
     const local = streamers.find(s => s.soopId.toLowerCase() === query.toLowerCase() || s.nickname.toLowerCase() === query.toLowerCase());
