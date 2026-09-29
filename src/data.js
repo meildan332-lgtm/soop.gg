@@ -134,12 +134,13 @@ async function fetchDirectoryPage(page, category, pageSize) {
   const payload = await response.json();
   if (payload.ids) {
     if (page === 1 && category === 'all') payload.ids = ['y1026', ...payload.ids.filter(id => id !== 'y1026')].slice(0, pageSize);
-    return payload;
+    return { ...payload, totalCount: Number(payload.totalCount) || Number(payload.totalPages) * pageSize };
   }
   const result = payload.RESULT || {};
   let ids = (result.DATA || []).map(item => item.user_id);
   if (page === 1 && category === 'all') ids = ['y1026', ...ids.filter(id => id !== 'y1026')].slice(0, pageSize);
-  return { ids, page, totalPages: Number(result.TOTAL_PAGE) || page };
+  const totalPages = Number(result.TOTAL_PAGE) || page;
+  return { ids, page, totalPages, totalCount: Number(result.TOTAL_CNT || result.TOTAL_COUNT) || totalPages * pageSize };
 }
 
 export async function loadStreamers({ reset = true, category = '전체' } = {}) {
