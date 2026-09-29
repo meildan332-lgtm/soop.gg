@@ -122,6 +122,100 @@
   box-shadow: 0 0 12px rgba(240,73,104,.25);
 }
 
+/* Brand-led search layout */
+.brand img {
+  display: block;
+  width: 112px;
+  height: 38px;
+  object-fit: contain;
+}
+
+.search-hero {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 22px;
+  padding: 34px 20px 30px;
+  border: 0;
+  background: transparent;
+}
+
+.search-brand {
+  width: min(390px, 64vw);
+  height: 130px;
+  object-fit: contain;
+}
+
+.search-hero .search {
+  width: min(720px, 100%);
+}
+
+.rank-tools { margin-top: 12px; }
+
+/* Imported rank artwork */
+.emblem > .emblem-icon { transform: scale(1.05); }
+.emblem-unranked > .emblem-icon { transform: scale(1.5); }
+.emblem-prestige > .emblem-icon { transform: scale(1.18); }
+
+.rank-crest {
+  width: 146px;
+  height: 138px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 2px;
+}
+
+.rank-crest img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 16px rgba(0,0,0,.36));
+}
+
+.rank-crest-prestige { width: 156px; height: 146px; margin-top: -4px; }
+.rank-crest-unranked { width: 104px; height: 104px; margin: 8px 0 12px; }
+
+/* Live broadcast card */
+.live-card {
+  width: 300px;
+  flex: 0 0 auto;
+  padding: 10px;
+  border: 1px solid #303640;
+  border-radius: 18px;
+  background: #191c22;
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 14px 34px rgba(0,0,0,.2);
+  transition: transform .18s, border-color .18s;
+}
+
+.live-card:hover { transform: translateY(-2px); border-color: #535c69; }
+.live-thumb {
+  position: relative;
+  height: 112px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 12px;
+  background: radial-gradient(circle at 72% 35%, color-mix(in srgb,var(--accent) 72%,#fff), transparent 24%), linear-gradient(135deg,#d9eff7,#5e8ea8 55%,#17202a);
+}
+.live-thumb:after { content:''; position:absolute; inset:auto -10% -38% 30%; height:90%; background:rgba(255,255,255,.18); transform:rotate(-10deg); }
+.live-thumb > b { position:absolute; z-index:2; left:10px; top:9px; padding:5px 9px; border-radius:99px; background:rgba(18,21,27,.9); font-size:12px; }
+.live-thumb > b i { display:inline-block; width:7px; height:7px; margin-right:4px; border-radius:50%; background:#f34848; box-shadow:0 0 0 3px rgba(243,72,72,.15); }
+.live-thumb > strong { position:relative; z-index:1; width:56px; height:56px; display:grid; place-items:center; border-radius:50%; background:linear-gradient(145deg,var(--accent),#242c3b); border:3px solid rgba(255,255,255,.75); font-size:14px; }
+.live-title { display:flex; align-items:center; gap:8px; padding:10px 4px 2px; font-size:14px; font-weight:700; }
+.live-title i { font-style:normal; color:#ff6262; font-size:10px; letter-spacing:.08em; }
+
+@media (max-width: 640px) {
+  .brand img { width: 96px; height: 32px; }
+  .search-hero { padding: 22px 6px 24px; gap: 16px; }
+  .search-brand { height: 90px; width: min(310px, 80vw); }
+  .profile-hero { align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+  .live-card { width: 100%; }
+  .live-thumb { height: 104px; }
+  .rank-crest { width: 118px; height: 110px; }
+}
+
 @media (max-width: 640px) {
   .emblem,
   .tier-visual .emblem {

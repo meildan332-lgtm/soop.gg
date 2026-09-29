@@ -14,6 +14,9 @@ export const streamers = [
   { soopId: 'starter_demo', nickname: '신입스트리머', category: '기타', cumulativeUsers: 3480000, accent: '#343945', initials: '신입', delta: 280000 }
 ].map((item, index) => ({
   ...item,
+  isLive: index === 0,
+  liveViewers: index === 0 ? 893 : 0,
+  liveTitle: index === 0 ? '현재 라이브 방송' : '',
   lastUpdated: '2026-09-29T16:29:00+09:00',
   totalBroadcastHours: 12840 - index * 713,
   followers: Math.max(18200, Math.round(item.cumulativeUsers / 4100)),
