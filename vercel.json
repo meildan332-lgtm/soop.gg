@@ -1,0 +1,3 @@
+{
+  "rewrites": [{ "source": "/streamer/(.*)", "destination": "/index.html" }]
+}
