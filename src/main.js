@@ -10,7 +10,7 @@ const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, c => ({ '&': '&a
 const medal = (tier) => {
   const rank = tier.name.match(/[123]$/)?.[0] ?? '';
   const emblemClass = { 미등급: 'unranked', 실버: 'silver', 골드: 'gold', 플래티넘: 'platinum', 에메랄드: 'emerald', 다이아: 'diamond', 프레스티지: 'prestige' }[tier.group];
-  return `<span class="emblem emblem-${emblemClass}" style="--tier:${tier.color}" aria-hidden="true"><img src="/emblems/${emblemClass}.png" alt=""/><b>${rank}</b></span>`;
+  return `<span class="emblem emblem-${emblemClass}" style="--tier:${tier.color}" aria-hidden="true"><img class="emblem-icon" src="/emblems/icons/${emblemClass}.png" alt=""/><img class="emblem-full" src="/emblems/${emblemClass}.png" alt=""/><b>${rank}</b></span>`;
 };
 const avatar = (s, large = false) => `<span class="avatar ${large ? 'avatar-large' : ''}" style="--accent:${s.accent}">${escapeHtml(s.initials)}</span>`;
 

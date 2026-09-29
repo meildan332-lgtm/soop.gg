@@ -28,6 +28,16 @@
   filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .45));
 }
 
+.emblem .emblem-full {
+  display: none;
+}
+
+.emblem .emblem-icon {
+  display: block;
+  transform: scale(1.5);
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .38));
+}
+
 .emblem b {
   position: absolute;
   inset: 0;
@@ -63,6 +73,14 @@
 
 .tier-visual .emblem img {
   transform: scale(1.18);
+}
+
+.tier-visual .emblem .emblem-icon {
+  display: none;
+}
+
+.tier-visual .emblem .emblem-full {
+  display: block;
 }
 
 .tier-visual .emblem b {
