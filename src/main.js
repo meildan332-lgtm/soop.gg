@@ -1,6 +1,6 @@
 import './styles.css';
 import './emblem-overrides.css';
-import { streamers, categories, lastUpdated, loadStreamers, addStreamer, searchStreamers, hasMoreStreamers, streamersLoading, rankingPopulation } from './data.js';
+import { streamers, categories, lastUpdated, loadStreamers, addStreamer, searchStreamers, loadStreamerVods, hasMoreStreamers, streamersLoading, rankingPopulation } from './data.js';
 import { getTierInfo, formatCompact } from './tiers.js';
 
 const app = document.querySelector('#app');
@@ -131,10 +131,48 @@ function vodList(s) {
   </a>`).join('')}</div>`;
 }
 
+function vodPagination(s) {
+  const meta = s.vodMeta;
+  if (!meta || meta.lastPage <= 1) return '';
+  const start = Math.max(1, meta.currentPage - 2);
+  const end = Math.min(meta.lastPage, start + 4);
+  const pages = Array.from({ length: end - start + 1 }, (_, index) => start + index);
+  return `<nav class="vod-pagination" aria-label="VOD 페이지">
+    <button data-vod-page="${meta.currentPage - 1}" ${meta.currentPage <= 1 ? 'disabled' : ''}>이전</button>
+    ${pages.map(page => `<button data-vod-page="${page}" class="${page === meta.currentPage ? 'active' : ''}" aria-current="${page === meta.currentPage ? 'page' : 'false'}">${page}</button>`).join('')}
+    <button data-vod-page="${meta.currentPage + 1}" ${meta.currentPage >= meta.lastPage ? 'disabled' : ''}>다음</button>
+  </nav>`;
+}
+
+const TIER_HISTORY_KEY = 'soopgg-tier-history-v1';
+const EMBLEM_LAUNCH_DATE = '2026-09-29';
+
+function rememberTierHistory(soopId, currentTier) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(TIER_HISTORY_KEY) || '{}');
+    const entries = Array.isArray(saved[soopId]) ? saved[soopId] : [];
+    if (!entries.length) {
+      entries.push({ name: currentTier.name, min: currentTier.min, date: EMBLEM_LAUNCH_DATE });
+    } else {
+      const highest = entries.reduce((best, item) => Number(item.min) > Number(best.min) ? item : best, entries[0]);
+      if (currentTier.min > Number(highest.min)) {
+        const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        entries.push({ name: currentTier.name, min: currentTier.min, date: today });
+      }
+    }
+    saved[soopId] = entries;
+    localStorage.setItem(TIER_HISTORY_KEY, JSON.stringify(saved));
+    return entries;
+  } catch {
+    return [{ name: currentTier.name, min: currentTier.min, date: EMBLEM_LAUNCH_DATE }];
+  }
+}
+
 function renderDetail(id) {
   const s = streamers.find(x => x.soopId === id);
   if (!s) { renderDetailError(id); return; }
   const info = getTierInfo(s.cumulativeUsers);
+  const tierHistory = rememberTierHistory(s.soopId, info.current);
   const overallRank = (!s.searchOnly && s.officialRank) || null;
   const rankBase = rankingPopulation;
   const topPercent = overallRank && rankBase ? Math.max(0.01, overallRank / rankBase * 100) : null;
@@ -150,11 +188,23 @@ function renderDetail(id) {
       <article class="subscriber-stat"><div><small>구독팬 수</small><strong>${(s.subscribers.basic + s.subscribers.plus).toLocaleString('ko-KR')}<i>명</i></strong><p><b>베이직 ${s.subscribers.basic.toLocaleString('ko-KR')}</b><b>플러스 ${s.subscribers.plus.toLocaleString('ko-KR')}</b></p></div></article>
     </section>
     <section class="tier-card" style="--tier:${info.current.color}"><div class="tier-visual">${rankCrest(info.current)}<strong>${info.current.name}</strong></div><div class="tier-numbers"><div><span>현재 누적 유저</span><strong>${s.cumulativeUsers.toLocaleString('ko-KR')}</strong></div><div><span>다음 목표</span><strong>${info.next ? `${info.next.name} · ${formatCompact(info.next.min)}` : '최고 등급 달성'}</strong></div><div class="detail-progress"><div><span>${info.next ? `${formatCompact(info.remaining)} 남음` : '모든 등급 완료'}</span><strong>${info.progress.toFixed(1)}%</strong></div><div class="progress"><i style="width:${info.progress}%"></i></div></div></div></section>
-    <section class="tier-history panel"><div class="panel-title"><div><span>TIER HISTORY</span><h2>티어 변경 날짜</h2></div></div><div class="tier-date-row"><i style="--tier:${info.current.color}"></i><div><strong>${info.current.name}</strong><span>${new Date(s.lastUpdated).toLocaleDateString('ko-KR')} 확인</span></div></div><p>이후 티어가 변경되면 변경된 날짜가 순서대로 기록됩니다.</p></section>
-    <section class="vod-section panel"><div class="panel-title"><div><span>RECENT VOD</span><h2>최근 VOD</h2></div><strong>${s.vods?.length || 0}개</strong></div>${vodList(s)}</section>
+    <section class="tier-history panel"><div class="panel-title"><div><span>TIER STATUS</span><h2>티어 현황</h2></div></div>${[...tierHistory].reverse().map((entry, index) => `<div class="tier-date-row ${index ? 'past' : ''}"><i style="--tier:${index ? '#596477' : info.current.color}"></i><div><strong>${escapeHtml(entry.name)}</strong><span>${new Date(`${entry.date}T00:00:00+09:00`).toLocaleDateString('ko-KR')} 최초 달성</span></div></div>`).join('')}<p>이 브라우저에 최초 달성일을 저장하며, 다음 티어 달성 시 확인 날짜가 자동으로 추가됩니다.</p></section>
+    <section class="vod-section panel"><div class="panel-title"><div><span>RECENT VOD</span><h2>최근 VOD</h2></div><strong>${s.vodMeta?.total?.toLocaleString('ko-KR') || s.vods?.length || 0}개</strong></div>${vodList(s)}${vodPagination(s)}</section>
     <footer><p>본 사이트는 SOOP 공식 서비스가 아닌 팬 제작 정보 사이트입니다.</p><p>${escapeHtml(s.dataSource)} · ${new Date(s.lastUpdated).toLocaleString('ko-KR')} 기준</p></footer></main>`;
   bindHome();
   bindDetailSearch();
+  document.querySelectorAll('[data-vod-page]').forEach(button => button.onclick = async () => {
+    if (button.disabled || button.classList.contains('active')) return;
+    const page = Number(button.dataset.vodPage);
+    document.querySelector('.vod-section')?.classList.add('loading');
+    try {
+      await loadStreamerVods(s.soopId, page);
+      renderDetail(s.soopId);
+      document.querySelector('.vod-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch {
+      document.querySelector('.vod-section')?.classList.remove('loading');
+    }
+  });
 }
 
 function renderDetailError(id) {

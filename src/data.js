@@ -65,14 +65,23 @@ function mapVods(vods) {
     );
     return {
       id: String(vodId || ''),
-      title: cleanText(ucc.title || ucc.subject || item.title || '다시보기'),
+      title: cleanText(item.title_name || ucc.title || ucc.subject || item.title || '다시보기'),
       thumbnail,
       date: ucc.reg_date || ucc.created_at || item.reg_date || item.created_at || '',
-      views: Number(ucc.view_cnt || ucc.read_cnt || item.view_cnt || item.read_cnt) || 0,
-      duration: Number(ucc.total_file_duration || ucc.duration || item.duration) || 0,
+      views: Number(item.count?.vod_read_cnt || item.count?.read_cnt || ucc.view_cnt || ucc.read_cnt || item.view_cnt || item.read_cnt) || 0,
+      duration: Math.round((Number(ucc.total_file_duration) || 0) / 1000) || Number(ucc.duration || item.duration) || 0,
       url: vodId ? `https://vod.sooplive.com/player/${encodeURIComponent(vodId)}` : ''
     };
   }).filter(vod => vod.id || vod.url);
+}
+
+function vodMeta(vods) {
+  const meta = vods?.meta || {};
+  return {
+    currentPage: Number(meta.current_page) || 1,
+    lastPage: Number(meta.last_page) || 1,
+    total: Number(meta.total) || (vods?.data?.length || 0)
+  };
 }
 
 function mapStation(data, seed, detectedCategory = '', vods = []) {
@@ -102,6 +111,7 @@ function mapStation(data, seed, detectedCategory = '', vods = []) {
     subscribers: { basic: Number(data.subscription?.tier1) || 0, plus: Number(data.subscription?.tier2) || 0 },
     fanClub: null,
     vods: mapVods(vods),
+    vodMeta: vodMeta(vods),
     history: { daily: [point], monthly: [point], yearly: [point] },
     stationTitle: cleanText(station.station_title || ''),
     dataSource: 'SOOP 공개 채널 API'
@@ -137,7 +147,7 @@ export async function fetchStreamer(soopId, overrides = {}) {
   const requestOptions = { headers: { Accept: 'application/json' }, credentials: 'omit' };
   const [stationResponse, vodResponse] = await Promise.all([
     fetch(`${SOOP_API}/${encodeURIComponent(id)}/station`, requestOptions),
-    fetch(`${SOOP_API}/${encodeURIComponent(id)}/vods/all/streamer?page=1&per_page=10&orderby=reg_date`, requestOptions).catch(() => null)
+    fetch(`${SOOP_API}/${encodeURIComponent(id)}/vods/all/streamer?page=1&per_page=24&orderby=reg_date`, requestOptions).catch(() => null)
   ]);
   if (!stationResponse.ok) throw new Error('SOOP 채널 정보를 불러오지 못했습니다.');
   const [stationData, vodData] = await Promise.all([
@@ -147,6 +157,21 @@ export async function fetchStreamer(soopId, overrides = {}) {
   const streamer = mapStation(stationData, { soopId: id, category: '기타', accent: '#7968ff', ...overrides }, primaryCategory(vodData), vodData);
   streamerCache.set(id.toLowerCase(), streamer);
   return streamer;
+}
+
+export async function loadStreamerVods(soopId, page = 1) {
+  const id = String(soopId || '').trim();
+  const response = await fetch(`${SOOP_API}/${encodeURIComponent(id)}/vods/all/streamer?page=${Math.max(1, Number(page) || 1)}&per_page=24&orderby=reg_date`, {
+    headers: { Accept: 'application/json' }, credentials: 'omit'
+  });
+  if (!response.ok) throw new Error('VOD 목록을 불러오지 못했습니다.');
+  const payload = await response.json();
+  const update = { vods: mapVods(payload), vodMeta: vodMeta(payload) };
+  const key = id.toLowerCase();
+  const cached = streamerCache.get(key);
+  if (cached) streamerCache.set(key, { ...cached, ...update });
+  streamers = streamers.map(item => item.soopId.toLowerCase() === key ? { ...item, ...update } : item);
+  return update;
 }
 
 async function fetchDirectoryPage(page, category, pageSize) {
