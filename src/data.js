@@ -11,6 +11,18 @@ export const streamers = [
   { soopId: 'learn_today', nickname: '오늘의지식', category: '교육/정보', cumulativeUsers: 49850000, accent: '#38bdf8', initials: '지식', delta: 1800000 },
   { soopId: 'rookie_gamer', nickname: '루키온', category: '게임', cumulativeUsers: 19880000, accent: '#818cf8', initials: '루키', delta: 840000 },
   { soopId: 'new_voice', nickname: '새봄소리', category: '버추얼', cumulativeUsers: 9300000, accent: '#fb7185', initials: '새봄', delta: 620000 }
-].map((item, index) => ({ ...item, lastUpdated: '2026-09-29T16:29:00+09:00', history: [0.72, 0.77, 0.79, 0.84, 0.87, 0.93, 1].map((r, i) => ({ label: `${i + 4}월`, value: Math.round(item.cumulativeUsers * r) })), seedRank: index + 1 }));
+].map((item, index) => ({
+  ...item,
+  lastUpdated: '2026-09-29T16:29:00+09:00',
+  totalBroadcastHours: 12840 - index * 713,
+  followers: Math.max(18200, Math.round(item.cumulativeUsers / 4100)),
+  subscribers: {
+    basic: Math.max(320, Math.round(item.cumulativeUsers / 184000)),
+    plus: Math.max(48, Math.round(item.cumulativeUsers / 790000))
+  },
+  fanClub: Math.max(860, Math.round(item.cumulativeUsers / 22500)),
+  history: [0.72, 0.77, 0.79, 0.84, 0.87, 0.93, 1].map((r, i) => ({ label: `${i + 4}월`, value: Math.round(item.cumulativeUsers * r) })),
+  seedRank: index + 1
+}));
 
 export const categories = ['전체', '게임', '버추얼', '보이는 라디오', '스포츠', '먹방/쿡방', '음악', '여행', '교육/정보', '기타'];
