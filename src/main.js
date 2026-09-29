@@ -10,11 +10,12 @@ const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, c => ({ '&': '&a
 const tierAssetKey = (tier) => ({ 미등급: 'unranked', 실버: 'silver', 골드: 'gold', 플래티넘: 'platinum', 에메랄드: 'emerald', 다이아: 'diamond', 프레스티지: 'prestige' }[tier.group]);
 const tierArt = (tier, variant, extraClass = '') => `<span class="tier-art tier-art-${variant} ${extraClass}" style="--tier:${tier.color}" aria-hidden="true"><img src="/emblems/sets/tier-${tierAssetKey(tier)}.png" alt=""/></span>`;
 const medal = (tier) => {
+  const rank = tier.name.match(/[123]$/)?.[0] ?? '';
   const emblemClass = tierAssetKey(tier);
-  return `<span class="emblem emblem-${emblemClass}" style="--tier:${tier.color}" aria-hidden="true">${tierArt(tier, 'icon')}</span>`;
+  return `<span class="emblem emblem-${emblemClass}" style="--tier:${tier.color}" aria-hidden="true"><img class="emblem-icon" src="/emblems/icons/${emblemClass}.png" alt=""/><b>${rank}</b></span>`;
 };
 const avatar = (s, large = false) => `<span class="avatar ${large ? 'avatar-large' : ''}" style="--accent:${s.accent}">${escapeHtml(s.initials)}</span>`;
-const rankedAvatar = (s, tier) => `<span class="ranked-avatar" style="--tier:${tier.color}">${avatar(s, true)}${tierArt(tier, 'avatar')}</span>`;
+const rankedAvatar = (s, tier) => `<span class="ranked-avatar ranked-avatar-${tierAssetKey(tier)}" style="--tier:${tier.color}">${avatar(s, true)}${tierArt(tier, 'avatar')}</span>`;
 
 function getFiltered() {
   const q = state.query.trim().toLowerCase();

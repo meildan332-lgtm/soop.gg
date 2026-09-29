@@ -23,7 +23,18 @@
 .tier-art-icon { width: 48px; height: 48px; }
 .tier-art-icon img { top: 0; }
 .tier-art-avatar img { top: -76%; }
+.ranked-avatar-prestige .tier-art-avatar img { top: -58%; }
 .tier-art-crest img { top: -200%; }
+
+.emblem > .emblem-icon {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: scale(1.5);
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .38));
+}
 
 .emblem b {
   position: absolute;
@@ -56,7 +67,15 @@
 
 .ranked-avatar { position: relative; width: 112px; height: 112px; display: grid; place-items: center; flex: 0 0 auto; }
 .ranked-avatar .avatar { position: relative; z-index: 1; width: 62px; height: 62px; border-width: 2px; box-shadow: 0 0 0 4px #10131a, 0 0 24px color-mix(in srgb,var(--tier) 26%,transparent); }
-.ranked-avatar .tier-art-avatar { position: absolute; z-index: 2; inset: 0; width: 112px; height: 112px; pointer-events: none; }
+.ranked-avatar .tier-art-avatar {
+  position: absolute;
+  z-index: 2;
+  inset: 4px;
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  pointer-events: none;
+}
 
 .metric-icon.favorite,
 .metric-icon.subscribe,
@@ -98,6 +117,6 @@
 
   .ranked-avatar { width: 88px; height: 88px; }
   .ranked-avatar .avatar { width: 50px; height: 50px; }
-  .ranked-avatar .tier-art-avatar { width: 88px; height: 88px; }
+  .ranked-avatar .tier-art-avatar { inset: 3px; width: 82px; height: 82px; }
   .tier-visual .tier-art-crest { width: 112px; height: 112px; }
 }
