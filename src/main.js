@@ -46,11 +46,12 @@ const categoryMatchCount = () => streamers.filter(s =>
 
 async function loadCategoryBatch({ reset = false } = {}) {
   const before = reset ? 0 : categoryMatchCount();
+  const batchSize = state.category === '전체' ? 100 : 30;
   let first = true;
   do {
     await loadStreamers({ reset: reset && first, category: state.category });
     first = false;
-  } while (hasMoreStreamers && categoryMatchCount() - before < 100);
+  } while (hasMoreStreamers && categoryMatchCount() - before < batchSize);
 }
 
 function header() {
@@ -59,7 +60,7 @@ function header() {
 }
 
 function controls() {
-  return `<section class="search-hero"><img class="search-brand" src="/brand/soopgg-logo.png" alt="SOOP.GG"/><label class="search"><span>⌕</span><input id="search" type="search" value="${escapeHtml(state.query)}" placeholder="닉네임 검색 또는 SOOP ID 입력" autocomplete="off"/><button type="button" id="search-submit" aria-label="SOOP 채널 검색" ${searchBusy ? 'disabled' : ''}>${searchBusy ? '조회 중' : '검색'}</button></label>${loadError ? `<p class="data-error" role="alert">${escapeHtml(loadError)}</p>` : ''}</section>
+  return `<section class="search-hero"><button class="search-brand-button" type="button" data-home aria-label="메인 화면으로"><img class="search-brand" src="/brand/soopgg-logo.png" alt="SOOP.GG"/></button><label class="search"><span>⌕</span><input id="search" type="search" value="${escapeHtml(state.query)}" placeholder="닉네임 검색 또는 SOOP ID 입력" autocomplete="off"/><button type="button" id="search-submit" aria-label="SOOP 채널 검색" ${searchBusy ? 'disabled' : ''}>${searchBusy ? '조회 중' : '검색'}</button></label>${loadError ? `<p class="data-error" role="alert">${escapeHtml(loadError)}</p>` : ''}</section>
   <section class="rank-tools" aria-label="스트리머 검색과 필터"><div class="category-row">${categories.map(c => `<button class="chip ${state.category === c ? 'active' : ''}" data-category="${c}">${c}</button>`).join('')}</div><div class="filter-row"><div><select id="tier" aria-label="등급 필터">${['전체 등급','미등급','실버','골드','플래티넘','에메랄드','다이아','프레스티지'].map(v => `<option ${state.tier === v ? 'selected' : ''}>${v}</option>`).join('')}</select><select id="sort" aria-label="정렬 방식">${['누적 유저 많은 순','누적 유저 적은 순','다음 등급 임박 순','닉네임 가나다순'].map(v => `<option ${state.sort === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div><button class="imminent ${state.imminent ? 'active' : ''}" id="imminent">${state.imminent ? '✓' : '↗'} 승급 임박</button></div></section>`;
 }
 
@@ -79,9 +80,9 @@ function row(s, index) {
 
 function renderList() {
   const items = getFiltered();
-  app.innerHTML = `${header()}<main>${controls()}<div class="list-head"><div><span class="rank-title-icon">≡</span><strong>${state.category === '전체' ? 'SOOP 스트리머 랭킹' : state.category + ' 스트리머 랭킹'}</strong><span>${items.length}명 불러옴</span></div><span>처음 100명 · 스크롤할 때마다 다음 100명 추가</span></div>
+  app.innerHTML = `${header()}<main>${controls()}<div class="list-head"><div><span class="rank-title-icon">≡</span><strong>${state.category === '전체' ? 'SOOP 스트리머 랭킹' : state.category + ' 스트리머 랭킹'}</strong><span>${items.length}명 불러옴</span></div><span>${state.category === '전체' ? '처음 100명 · 스크롤할 때마다 다음 100명 추가' : '처음 30명 · 스크롤할 때마다 다음 30명 추가'}</span></div>
   <section class="streamer-list">${items.length ? items.map(row).join('') : `<div class="empty"><strong>조건에 맞는 스트리머가 없어요.</strong><span>${hasMoreStreamers ? '다음 스트리머를 불러오는 중입니다.' : '검색어나 필터를 바꿔보세요.'}</span><button id="reset">필터 초기화</button></div>`}</section>
-  ${hasMoreStreamers ? `<div class="load-sentinel" id="load-more"><span class="loader"></span>${streamersLoading ? '불러오는 중…' : '아래로 스크롤하면 100명을 더 불러옵니다'}</div>` : ''}
+  ${hasMoreStreamers ? `<div class="load-sentinel" id="load-more"><span class="loader"></span>${streamersLoading ? '불러오는 중…' : `아래로 스크롤하면 ${state.category === '전체' ? 100 : 30}명을 더 불러옵니다`}</div>` : ''}
   <footer><p>본 사이트는 SOOP 공식 서비스가 아닌 팬 제작 정보 사이트입니다.</p><p>수치는 SOOP 공개 채널 응답에서 불러오며, 플랫폼 반영 시점에 따라 차이가 날 수 있습니다.</p></footer></main>`;
   bindList();
   observeMore();
@@ -95,7 +96,7 @@ function observeMore() {
     if (!entries[0].isIntersecting || streamersLoading) return;
     listObserver.disconnect();
     sentinel.classList.add('loading');
-    sentinel.innerHTML = '<span class="loader"></span>다음 100명을 불러오는 중…';
+    sentinel.innerHTML = `<span class="loader"></span>다음 ${state.category === '전체' ? 100 : 30}명을 불러오는 중…`;
     try { await loadCategoryBatch(); loadError = ''; }
     catch (error) { loadError = error.message; }
     renderList();

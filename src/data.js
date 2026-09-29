@@ -93,6 +93,7 @@ export let hasMoreStreamers = true;
 export let streamersLoading = false;
 let directoryPage = 0;
 let activeDirectoryCategory = 'all';
+let activePageSize = 100;
 
 const directoryCategory = {
   '전체': 'all', '게임': 'game', '버추얼': 'all', '보이는 라디오': 'talkcam',
@@ -116,8 +117,8 @@ export async function fetchStreamer(soopId, overrides = {}) {
   return mapStation(stationData, { soopId: id, category: '기타', accent: '#7968ff', ...overrides }, primaryCategory(vodData));
 }
 
-async function fetchDirectoryPage(page, category) {
-  const response = await fetch(`/api/streamers?page=${page}&category=${encodeURIComponent(category)}`);
+async function fetchDirectoryPage(page, category, pageSize) {
+  const response = await fetch(`/api/streamers?page=${page}&category=${encodeURIComponent(category)}&pageSize=${pageSize}`);
   if (!response.ok) throw new Error('SOOP 스트리머 목록을 불러오지 못했습니다.');
   const payload = await response.json();
   if (payload.ids) return payload;
@@ -129,11 +130,13 @@ export async function loadStreamers({ reset = true, category = '전체' } = {}) 
   if (streamersLoading) return streamers;
   streamersLoading = true;
   const requestedCategory = directoryCategory[category] || 'all';
+  const requestedPageSize = category === '전체' ? 100 : 30;
   if (reset || requestedCategory !== activeDirectoryCategory) {
     streamers = [];
     directoryPage = 0;
     hasMoreStreamers = true;
     activeDirectoryCategory = requestedCategory;
+    activePageSize = requestedPageSize;
   }
   if (!hasMoreStreamers) { streamersLoading = false; return streamers; }
 
@@ -141,7 +144,7 @@ export async function loadStreamers({ reset = true, category = '전체' } = {}) 
   const nextPage = directoryPage + 1;
   let directory;
   try {
-    directory = await fetchDirectoryPage(nextPage, activeDirectoryCategory);
+    directory = await fetchDirectoryPage(nextPage, activeDirectoryCategory, activePageSize);
   } catch (error) {
     if (nextPage !== 1 || activeDirectoryCategory !== 'all') { streamersLoading = false; throw error; }
     directory = { ids: rankedIds, page: 1, totalPages: 1 };
