@@ -21,7 +21,11 @@ export const streamers = [
     plus: Math.max(48, Math.round(item.cumulativeUsers / 790000))
   },
   fanClub: Math.max(860, Math.round(item.cumulativeUsers / 22500)),
-  history: [0.72, 0.77, 0.79, 0.84, 0.87, 0.93, 1].map((r, i) => ({ label: `${i + 4}월`, value: Math.round(item.cumulativeUsers * r) })),
+  history: {
+    daily: [0.965, 0.97, 0.976, 0.981, 0.986, 0.993, 1].map((r, i) => ({ label: `${23 + i}일`, value: Math.round(item.cumulativeUsers * r) })),
+    monthly: [0.72, 0.77, 0.79, 0.84, 0.87, 0.93, 1].map((r, i) => ({ label: `${i + 4}월`, value: Math.round(item.cumulativeUsers * r) })),
+    yearly: [0.19, 0.34, 0.51, 0.73, 1].map((r, i) => ({ label: `${2022 + i}년`, value: Math.round(item.cumulativeUsers * r) }))
+  },
   seedRank: index + 1
 }));
 
