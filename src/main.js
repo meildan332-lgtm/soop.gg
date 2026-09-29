@@ -1,4 +1,5 @@
 import './styles.css';
+import './emblem-overrides.css';
 import { streamers, categories } from './data.js';
 import { getTierInfo, formatCompact } from './tiers.js';
 
@@ -6,7 +7,11 @@ const app = document.querySelector('#app');
 const state = { query: '', category: '전체', tier: '전체 등급', sort: '누적 유저 많은 순', imminent: false, period: 'monthly' };
 
 const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
-const medal = (tier) => `<span class="emblem" style="--tier:${tier.color}" aria-hidden="true"><i></i></span>`;
+const medal = (tier) => {
+  const rank = tier.name.match(/[123]$/)?.[0] ?? (tier.group === '프레스티지' ? '★' : '');
+  const emblemClass = { 미등급: 'unranked', 실버: 'silver', 골드: 'gold', 플래티넘: 'platinum', 에메랄드: 'emerald', 다이아: 'diamond', 프레스티지: 'prestige' }[tier.group];
+  return `<span class="emblem emblem-${emblemClass}" style="--tier:${tier.color}" aria-hidden="true"><i></i><b>${rank}</b></span>`;
+};
 const avatar = (s, large = false) => `<span class="avatar ${large ? 'avatar-large' : ''}" style="--accent:${s.accent}">${escapeHtml(s.initials)}</span>`;
 
 function getFiltered() {

@@ -10,7 +10,8 @@ export const streamers = [
   { soopId: 'travel_j', nickname: '여행가J', category: '여행', cumulativeUsers: 79800000, accent: '#2dd4bf', initials: '여행', delta: 2900000 },
   { soopId: 'learn_today', nickname: '오늘의지식', category: '교육/정보', cumulativeUsers: 49850000, accent: '#38bdf8', initials: '지식', delta: 1800000 },
   { soopId: 'rookie_gamer', nickname: '루키온', category: '게임', cumulativeUsers: 19880000, accent: '#818cf8', initials: '루키', delta: 840000 },
-  { soopId: 'new_voice', nickname: '새봄소리', category: '버추얼', cumulativeUsers: 9300000, accent: '#fb7185', initials: '새봄', delta: 620000 }
+  { soopId: 'new_voice', nickname: '새봄소리', category: '버추얼', cumulativeUsers: 9300000, accent: '#fb7185', initials: '새봄', delta: 620000 },
+  { soopId: 'starter_demo', nickname: '신입스트리머', category: '기타', cumulativeUsers: 3480000, accent: '#343945', initials: '신입', delta: 280000 }
 ].map((item, index) => ({
   ...item,
   lastUpdated: '2026-09-29T16:29:00+09:00',

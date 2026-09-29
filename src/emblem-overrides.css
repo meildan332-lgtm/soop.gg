@@ -1,0 +1,3 @@
+.tier-visual:has(.emblem-unranked) > strong {
+  color: #8d95a3;
+}

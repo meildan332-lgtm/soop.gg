@@ -1,5 +1,5 @@
 export const tiers = [
-  { name: '미등급', group: '미등급', min: 0, color: '#6d7890' },
+  { name: '언랭크', group: '미등급', min: 0, color: '#222630' },
   { name: '실버 3', group: '실버', min: 5_000_000, color: '#aab7ca' },
   { name: '실버 2', group: '실버', min: 7_000_000, color: '#b8c4d5' },
   { name: '실버 1', group: '실버', min: 10_000_000, color: '#d0d9e5' },
