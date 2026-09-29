@@ -90,8 +90,8 @@
 .tier-visual .tier-art-crest.tier-art-prestige { width: 138px; height: 138px; margin: 0 0 2px; opacity: .9; filter: saturate(.84); }
 .tier-art-crest.tier-art-prestige img { height: 250%; top: -145%; }
 
-.ranked-avatar { position: relative; width: 94px; height: 94px; display: grid; place-items: center; flex: 0 0 auto; }
-.ranked-avatar .avatar { position: relative; z-index: 1; width: 62px; height: 62px; border-width: 2px; box-shadow: 0 0 0 3px #10131a, 0 0 20px color-mix(in srgb,var(--tier) 24%,transparent); }
+.ranked-avatar { position: relative; width: 78px; height: 78px; display: grid; place-items: center; flex: 0 0 auto; }
+.ranked-avatar .avatar { position: relative; z-index: 1; width: 78px; height: 78px; border: 0; box-shadow: none; }
 .ranked-avatar .tier-art-avatar {
   position: absolute;
   z-index: 2;
@@ -251,8 +251,8 @@
     height: 104px;
   }
 
-  .ranked-avatar { width: 78px; height: 78px; }
-  .ranked-avatar .avatar { width: 50px; height: 50px; }
+  .ranked-avatar { width: 60px; height: 60px; }
+  .ranked-avatar .avatar { width: 60px; height: 60px; }
   .ranked-avatar .tier-art-avatar { inset: 0; width: 78px; height: 78px; }
   .prestige-avatar-frame { inset: -2px; width: 82px; height: 82px; }
   .tier-visual .tier-art-crest { width: 112px; height: 112px; }

@@ -20,10 +20,7 @@ const medal = (tier) => {
   return `<span class="emblem emblem-${emblemClass}" style="--tier:${tier.color}" aria-hidden="true"><img class="emblem-icon" src="${listRankImage(tier)}" alt=""/><b>${rank}</b></span>`;
 };
 const avatar = (s, large = false) => `<span class="avatar ${large ? 'avatar-large' : ''}" style="--accent:${s.accent}">${s.profileImage ? `<img src="${escapeHtml(s.profileImage)}" alt="" referrerpolicy="no-referrer"/>` : escapeHtml(s.initials)}</span>`;
-const avatarFrame = (tier) => tierAssetKey(tier) === 'prestige'
-  ? '<span class="prestige-avatar-frame" aria-hidden="true"><img src="/emblems/frames/prestige-avatar.png" alt=""/></span>'
-  : tierArt(tier, 'avatar');
-const rankedAvatar = (s, tier) => `<span class="ranked-avatar ranked-avatar-${tierAssetKey(tier)}" style="--tier:${tier.color}">${avatar(s, true)}${avatarFrame(tier)}</span>`;
+const rankedAvatar = (s, tier) => `<span class="ranked-avatar ranked-avatar-${tierAssetKey(tier)}" style="--tier:${tier.color}">${avatar(s, true)}</span>`;
 
 function getFiltered() {
   const q = state.query.trim().toLowerCase();
