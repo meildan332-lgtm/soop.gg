@@ -4,7 +4,7 @@ import { streamers, categories, lastUpdated, loadStreamers, addStreamer, hasMore
 import { getTierInfo, formatCompact } from './tiers.js';
 
 const app = document.querySelector('#app');
-const state = { query: '', category: '전체', tier: '전체 등급', sort: '누적 유저 많은 순', imminent: false, period: 'monthly' };
+const state = { query: '', category: '전체', tier: '전체 등급', sort: '누적 유저 많은 순', imminent: false, period: 'monthly', view: 'ranking' };
 let loadError = '';
 let searchBusy = false;
 let listObserver;
@@ -60,7 +60,7 @@ async function loadCategoryBatch({ reset = false } = {}) {
 
 function header() {
   const updated = lastUpdated ? lastUpdated.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '불러오는 중';
-  return `<header class="site-header"><div class="header-inner"><button class="brand" data-home aria-label="홈으로"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/></button><nav aria-label="주요 메뉴"><button class="nav-active" data-home>랭킹</button><button id="nav-imminent">승급 임박</button><div class="category-menu"><button id="nav-category">카테고리</button><div class="category-dropdown" aria-label="카테고리 메뉴">${categories.filter(c => c !== '전체').map(c => `<button data-nav-category="${c}">${c}</button>`).join('')}</div></div></nav><span class="update"><b>LIVE DATA</b> SOOP 공개 데이터 · ${updated}</span></div></header>`;
+  return `<header class="site-header"><div class="header-inner"><button class="brand" data-home aria-label="홈으로"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/></button><nav aria-label="주요 메뉴"><button class="${state.view === 'ranking' ? 'nav-active' : ''}" data-home>랭킹</button><button class="${state.view === 'imminent' ? 'nav-active' : ''}" id="nav-imminent">승급 임박</button><div class="category-menu"><button class="${state.view === 'category' ? 'nav-active' : ''}" id="nav-category">카테고리</button><div class="category-dropdown" aria-label="카테고리 메뉴">${categories.filter(c => c !== '전체').map(c => `<button data-nav-category="${c}">${c}</button>`).join('')}</div></div></nav><span class="update"><b>LIVE DATA</b> SOOP 공개 데이터 · ${updated}</span></div></header>`;
 }
 
 function controls() {
@@ -151,15 +151,18 @@ function renderDetailError(id) {
 
 function navigate(id) { history.pushState({}, '', `/streamer/${id}`); renderDetail(id); window.scrollTo(0,0); }
 async function openCategory(category) {
+  state.view = 'category';
   state.category = category;
+  state.imminent = false;
+  state.sort = '누적 유저 많은 순';
   history.pushState({}, '', '/');
   app.innerHTML = `<main class="loading-state"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/><strong>SOOP에서 데이터를 불러오고 있습니다</strong></main>`;
   try { await loadCategoryBatch({ reset: true }); loadError = ''; } catch (error) { loadError = error.message; }
   renderList();
 }
 function bindHome() {
-  document.querySelectorAll('[data-home]').forEach(el => el.onclick = () => { history.pushState({}, '', '/'); renderList(); });
-  document.querySelector('#nav-category')?.addEventListener('click', () => { history.pushState({}, '', '/'); renderList(); document.querySelector('.rank-tools')?.scrollIntoView({ behavior: 'smooth' }); });
+  document.querySelectorAll('[data-home]').forEach(el => el.onclick = () => { Object.assign(state, { category: '전체', imminent: false, sort: '누적 유저 많은 순', view: 'ranking' }); history.pushState({}, '', '/'); renderList(); });
+  document.querySelector('#nav-category')?.addEventListener('click', () => { Object.assign(state, { imminent: false, sort: '누적 유저 많은 순', view: 'category' }); history.pushState({}, '', '/'); renderList(); });
   document.querySelectorAll('[data-nav-category]').forEach(el => el.onclick = () => openCategory(el.dataset.navCategory));
 }
 async function resolveStreamer(query) {
@@ -204,9 +207,9 @@ function bindList() {
   search.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); submitSearch(); } });
   document.querySelectorAll('[data-category]').forEach(b => b.onclick = () => openCategory(b.dataset.category));
   document.querySelector('#tier').onchange = e => { state.tier = e.target.value; renderList(); };
-  document.querySelector('#nav-imminent')?.addEventListener('click', () => { state.imminent = true; state.sort = '다음 등급 임박 순'; renderList(); });
+  document.querySelector('#nav-imminent')?.addEventListener('click', () => { Object.assign(state, { category: '전체', imminent: true, sort: '다음 등급 임박 순', view: 'imminent' }); history.pushState({}, '', '/'); renderList(); });
   document.querySelectorAll('[data-streamer]').forEach(el => { el.onclick = () => navigate(el.dataset.streamer); el.onkeydown = e => { if (e.key === 'Enter') navigate(el.dataset.streamer); }; });
-  document.querySelector('#reset')?.addEventListener('click', () => { draftQuery = ''; Object.assign(state, { query: '', category: '전체', tier: '전체 등급', sort: '누적 유저 많은 순', imminent: false }); renderList(); });
+  document.querySelector('#reset')?.addEventListener('click', () => { draftQuery = ''; Object.assign(state, { query: '', category: '전체', tier: '전체 등급', sort: '누적 유저 많은 순', imminent: false, view: 'ranking' }); renderList(); });
 }
 
 window.addEventListener('popstate', route);
