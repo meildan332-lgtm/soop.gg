@@ -27,7 +27,7 @@ function getFiltered() {
   const filtered = streamers.filter(s => {
     const info = getTierInfo(s.cumulativeUsers);
     return (!q || s.nickname.toLowerCase().includes(q) || s.soopId.toLowerCase().includes(q)) &&
-      (state.category === '전체' || s.category === state.category) &&
+      (state.category === '전체' || (s.categoryGroup || s.category) === state.category) &&
       (state.tier === '전체 등급' || info.current.group === state.tier) &&
       (!state.imminent || (info.next && info.progress >= 80));
   });

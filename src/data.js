@@ -12,7 +12,50 @@ const seedChannels = rankedIds.map((soopId, index) => ({
 const cleanText = (value) => String(value || '').replace(/<[^>]*>/g, '').trim();
 const absoluteImage = (url) => url?.startsWith('//') ? `https:${url}` : (url || '');
 
-function mapStation(data, seed) {
+const categoryTranslations = {
+  'Maple Story': '메이플스토리',
+  'Sudden Attack': '서든어택',
+  'League of Legends': '리그 오브 레전드',
+  'StarCraft': '스타크래프트',
+  'StarCraft II': '스타크래프트 2',
+  'BattleGrounds': '배틀그라운드',
+  'Overwatch': '오버워치',
+  'Valorant': '발로란트',
+  'Minecraft': '마인크래프트',
+  'Talk/Cam': '토크/캠방',
+  'Virtual': '버추얼',
+  'Music': '음악',
+  'Sports': '스포츠',
+  'Travel': '여행'
+};
+
+const gameKeywords = /게임|리그 오브 레전드|메이플|서든|스타크래프트|배틀그라운드|오버워치|발로란트|마인크래프트|FC ONLINE|로스트아크|던전|Raven|TFT|전략적 팀 전투/i;
+
+function categoryGroup(category) {
+  if (!category) return '기타';
+  if (gameKeywords.test(category)) return '게임';
+  if (/버추얼|Virtual/i.test(category)) return '버추얼';
+  if (/토크|캠방|보이는 라디오|소통|Talk/i.test(category)) return '보이는 라디오';
+  if (/스포츠|축구|야구|농구|Sports/i.test(category)) return '스포츠';
+  if (/먹방|쿡방|요리|Food/i.test(category)) return '먹방/쿡방';
+  if (/음악|노래|Music/i.test(category)) return '음악';
+  if (/여행|Travel/i.test(category)) return '여행';
+  if (/교육|정보|시사|Education/i.test(category)) return '교육/정보';
+  return '기타';
+}
+
+function primaryCategory(vods) {
+  const counts = new Map();
+  for (const vod of vods?.data || []) {
+    const raw = cleanText(vod?.ucc?.category_tags?.[0]);
+    if (!raw) continue;
+    const label = categoryTranslations[raw] || raw;
+    counts.set(label, (counts.get(label) || 0) + 1);
+  }
+  return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+}
+
+function mapStation(data, seed, detectedCategory = '') {
   const station = data.station;
   if (!station?.upd) throw new Error('채널 정보를 찾을 수 없습니다.');
   const nickname = cleanText(station.user_nick || station.station_name || seed.soopId);
@@ -21,6 +64,8 @@ function mapStation(data, seed) {
 
   return {
     ...seed,
+    category: detectedCategory || seed.category || '기타',
+    categoryGroup: categoryGroup(detectedCategory || seed.category),
     nickname,
     initials: nickname.replace(/[^0-9A-Za-z가-힣]/g, '').slice(0, 2) || seed.soopId.slice(0, 2),
     profileImage: absoluteImage(data.profile_image || station.profile_image),
@@ -48,9 +93,17 @@ export let lastUpdated = null;
 export async function fetchStreamer(soopId, overrides = {}) {
   const id = String(soopId || '').trim().replace(/^@/, '');
   if (!/^[0-9A-Za-z_-]{2,40}$/.test(id)) throw new Error('올바른 SOOP ID를 입력해 주세요.');
-  const response = await fetch(`${SOOP_API}/${encodeURIComponent(id)}/station`, { headers: { Accept: 'application/json' }, credentials: 'omit' });
-  if (!response.ok) throw new Error('SOOP 채널 정보를 불러오지 못했습니다.');
-  return mapStation(await response.json(), { soopId: id, category: '기타', accent: '#7968ff', ...overrides });
+  const requestOptions = { headers: { Accept: 'application/json' }, credentials: 'omit' };
+  const [stationResponse, vodResponse] = await Promise.all([
+    fetch(`${SOOP_API}/${encodeURIComponent(id)}/station`, requestOptions),
+    fetch(`${SOOP_API}/${encodeURIComponent(id)}/vods/all/streamer?page=1&per_page=10&orderby=reg_date`, requestOptions).catch(() => null)
+  ]);
+  if (!stationResponse.ok) throw new Error('SOOP 채널 정보를 불러오지 못했습니다.');
+  const [stationData, vodData] = await Promise.all([
+    stationResponse.json(),
+    vodResponse?.ok ? vodResponse.json().catch(() => null) : null
+  ]);
+  return mapStation(stationData, { soopId: id, category: '기타', accent: '#7968ff', ...overrides }, primaryCategory(vodData));
 }
 
 export async function loadStreamers() {
