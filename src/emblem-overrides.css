@@ -77,15 +77,16 @@
   pointer-events: none;
 }
 
-.metric-icon.favorite,
-.metric-icon.subscribe,
-.metric-icon.fanclub {
+.profile-stats .metric-icon {
   width: 30px;
   height: 30px;
-  background: transparent;
+  background: transparent !important;
+  border-radius: 0;
   font-size: 19px;
 }
 
+.profile-stats .metric-icon.purple { color: #9a7bff; text-shadow: 0 0 12px rgba(154,123,255,.22); }
+.profile-stats .metric-icon.blue { color: #58adff; text-shadow: 0 0 12px rgba(88,173,255,.22); }
 .metric-icon.favorite { color: #ffc928; text-shadow: 0 0 12px rgba(255,201,40,.24); }
 .metric-icon.fanclub { color: #ff5f87; text-shadow: 0 0 12px rgba(255,95,135,.22); }
 .metric-icon.subscribe i {
