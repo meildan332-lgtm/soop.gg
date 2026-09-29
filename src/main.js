@@ -8,6 +8,9 @@ const state = { query: '', category: '전체', tier: '전체 등급', sort: '누
 let loadError = '';
 let searchBusy = false;
 let listObserver;
+const streamerAliases = new Map([
+  ['철구', 'y1026'], ['철구형', 'y1026'], ['철구형2', 'y1026'], ['철구형2↑', 'y1026']
+]);
 
 const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
 const tierAssetKey = (tier) => ({ 미등급: 'unranked', 실버: 'silver', 골드: 'gold', 플래티넘: 'platinum', 에메랄드: 'emerald', 다이아: 'diamond', 프레스티지: 'prestige' }[tier.group]);
@@ -156,7 +159,8 @@ function bindList() {
     document.querySelector('#search').setSelectionRange(state.query.length, state.query.length);
   });
   const submitSearch = async () => {
-    const query = state.query.trim().replace(/^@/, '');
+    const enteredQuery = state.query.trim().replace(/^@/, '');
+    const query = streamerAliases.get(enteredQuery) || enteredQuery;
     const local = streamers.find(s => s.soopId.toLowerCase() === query.toLowerCase() || s.nickname.toLowerCase() === query.toLowerCase());
     if (local) { navigate(local.soopId); return; }
     if (!query) return;

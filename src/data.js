@@ -121,9 +121,14 @@ async function fetchDirectoryPage(page, category, pageSize) {
   const response = await fetch(`/api/streamers?page=${page}&category=${encodeURIComponent(category)}&pageSize=${pageSize}`);
   if (!response.ok) throw new Error('SOOP 스트리머 목록을 불러오지 못했습니다.');
   const payload = await response.json();
-  if (payload.ids) return payload;
+  if (payload.ids) {
+    if (page === 1 && category === 'all') payload.ids = ['y1026', ...payload.ids.filter(id => id !== 'y1026')].slice(0, pageSize);
+    return payload;
+  }
   const result = payload.RESULT || {};
-  return { ids: (result.DATA || []).map(item => item.user_id), page, totalPages: Number(result.TOTAL_PAGE) || page };
+  let ids = (result.DATA || []).map(item => item.user_id);
+  if (page === 1 && category === 'all') ids = ['y1026', ...ids.filter(id => id !== 'y1026')].slice(0, pageSize);
+  return { ids, page, totalPages: Number(result.TOTAL_PAGE) || page };
 }
 
 export async function loadStreamers({ reset = true, category = '전체' } = {}) {

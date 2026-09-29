@@ -17,9 +17,12 @@ export default async function handler(req, res) {
     if (!response.ok) throw new Error(`SOOP ${response.status}`);
     const payload = await response.json();
     const result = payload.RESULT || {};
+    let ids = (result.DATA || []).map(item => item.user_id).filter(Boolean);
+    // SOOP 목록은 장기 미방송 채널을 제외하지만 채널 공개 API에는 유효한 데이터가 남아 있다.
+    if (category === 'all' && page === 1) ids = ['y1026', ...ids.filter(id => id !== 'y1026')].slice(0, pageSize);
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
     res.status(200).json({
-      ids: (result.DATA || []).map(item => item.user_id).filter(Boolean),
+      ids,
       page,
       totalPages: Number(result.TOTAL_PAGE) || page,
       totalCount: Number(result.TOTAL_CNT) || 0
