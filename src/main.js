@@ -170,6 +170,7 @@ function renderDetail(id) {
       <article><div><small>애청자 수</small><strong>${s.followers.toLocaleString('ko-KR')}<i>명</i></strong></div></article>
       <article class="subscriber-stat"><div><small>구독팬 수</small><strong>${(s.subscribers.basic + s.subscribers.plus).toLocaleString('ko-KR')}<i>명</i></strong><p><b>베이직 ${s.subscribers.basic.toLocaleString('ko-KR')}</b><b>플러스 ${s.subscribers.plus.toLocaleString('ko-KR')}</b></p></div></article>
     </section>
+    <section class="tier-card" style="--tier:${info.current.color}"><div class="tier-visual">${rankCrest(info.current)}<strong>${info.current.name}</strong></div><div class="tier-numbers"><div><span>현재 누적 유저</span><strong>${s.cumulativeUsers.toLocaleString('ko-KR')}</strong></div><div><span>다음 목표</span><strong>${info.next ? `${info.next.name} · ${formatCompact(info.next.min)}` : '최고 등급 달성'}</strong></div><div class="detail-progress"><div><span>${info.next ? `${formatCompact(info.remaining)} 남음` : '모든 등급 완료'}</span><strong>${info.progress.toFixed(1)}%</strong></div><div class="progress"><i style="width:${info.progress}%"></i></div></div></div></section>
     <section class="vod-section panel"><div class="panel-title"><div><span>RECENT VOD</span><h2>최근 VOD</h2></div><strong>${s.vodMeta?.total?.toLocaleString('ko-KR') || s.vods?.length || 0}개</strong></div>${vodList(s)}${vodPagination(s)}</section>
     <footer><p>본 사이트는 SOOP 공식 서비스가 아닌 팬 제작 정보 사이트입니다.</p><p>${escapeHtml(s.dataSource)} · ${new Date(s.lastUpdated).toLocaleString('ko-KR')} 기준</p></footer></main>`;
   bindHome();
