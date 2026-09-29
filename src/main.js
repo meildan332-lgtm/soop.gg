@@ -8,9 +8,9 @@ const state = { query: '', category: '전체', tier: '전체 등급', sort: '누
 
 const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
 const tierAssetKey = (tier) => ({ 미등급: 'unranked', 실버: 'silver', 골드: 'gold', 플래티넘: 'platinum', 에메랄드: 'emerald', 다이아: 'diamond', 프레스티지: 'prestige' }[tier.group]);
-const tierArt = (tier, variant, extraClass = '') => `<span class="tier-art tier-art-${variant} ${extraClass}" style="--tier:${tier.color}" aria-hidden="true"><img src="/emblems/sets/tier-${tierAssetKey(tier)}.png" alt=""/></span>`;
+const tierArt = (tier, variant, extraClass = '') => `<span class="tier-art tier-art-${variant} tier-art-${tierAssetKey(tier)} ${extraClass}" style="--tier:${tier.color}" aria-hidden="true"><img src="/emblems/sets/tier-${tierAssetKey(tier)}.png" alt=""/></span>`;
 const medal = (tier) => {
-  const rank = tier.name.match(/[123]$/)?.[0] ?? '';
+  const rank = tier.group === '프레스티지' ? '★' : (tier.name.match(/[123]$/)?.[0] ?? '');
   const emblemClass = tierAssetKey(tier);
   return `<span class="emblem emblem-${emblemClass}" style="--tier:${tier.color}" aria-hidden="true"><img class="emblem-icon" src="/emblems/icons/${emblemClass}.png" alt=""/><b>${rank}</b></span>`;
 };
