@@ -91,6 +91,7 @@ export let streamers = [];
 export let lastUpdated = null;
 export let hasMoreStreamers = true;
 export let streamersLoading = false;
+export let rankingPopulation = 0;
 const streamerCache = new Map();
 let directoryPage = 0;
 let activeDirectoryCategory = 'all';
@@ -164,6 +165,7 @@ export async function loadStreamers({ reset = true, category = '전체' } = {}) 
     if (nextPage !== 1 || activeDirectoryCategory !== 'all') { streamersLoading = false; throw error; }
     directory = { ids: rankedIds, page: 1, totalPages: 1 };
   }
+  if (activeDirectoryCategory === 'all' && directory.totalCount) rankingPopulation = directory.totalCount;
   const known = new Set(streamers.filter(item => !item.searchOnly).map(item => item.soopId));
   const seeds = directory.ids.filter(id => !known.has(id)).map((soopId, index) => ({
     soopId, category: activeDirectoryCategory === 'all' ? '기타' : category,

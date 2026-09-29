@@ -1,6 +1,6 @@
 import './styles.css';
 import './emblem-overrides.css';
-import { streamers, categories, lastUpdated, loadStreamers, addStreamer, searchStreamers, hasMoreStreamers, streamersLoading } from './data.js';
+import { streamers, categories, lastUpdated, loadStreamers, addStreamer, searchStreamers, hasMoreStreamers, streamersLoading, rankingPopulation } from './data.js';
 import { getTierInfo, formatCompact } from './tiers.js';
 
 const app = document.querySelector('#app');
@@ -134,6 +134,8 @@ function renderDetail(id) {
   const info = getTierInfo(s.cumulativeUsers);
   const periodData = s.history[state.period];
   const periodGrowth = periodData.length > 1 ? periodData.at(-1).value - periodData[0].value : null;
+  const overallRank = !s.searchOnly && s.officialRank ? s.officialRank : null;
+  const topPercent = overallRank && rankingPopulation ? Math.max(0.01, overallRank / rankingPopulation * 100) : null;
   const stationUrl = `https://www.sooplive.com/station/${encodeURIComponent(s.soopId)}`;
   const liveUrl = s.broadNo ? `https://play.sooplive.com/${encodeURIComponent(s.soopId)}/${s.broadNo}` : stationUrl;
   const livePanel = s.isLive ? `<a class="live-card" href="${liveUrl}" target="_blank" rel="noopener noreferrer"><span class="live-thumb" style="--accent:${s.accent}"><img src="${escapeHtml(s.liveThumbnail)}" alt="${escapeHtml(s.nickname)} 라이브 방송 썸네일" referrerpolicy="no-referrer"/><b><i></i> ${s.liveViewers.toLocaleString('ko-KR')}</b><strong>${escapeHtml(s.initials)}</strong></span><span class="live-title"><i>LIVE</i><span>${escapeHtml(s.liveTitle || '현재 라이브 방송')}</span></span></a>` : `<a class="station" href="${stationUrl}" target="_blank" rel="noopener noreferrer">SOOP 방송국 바로가기</a>`;
@@ -144,6 +146,8 @@ function renderDetail(id) {
       <article><span class="metric-icon blue">◉</span><div><small>누적 유저</small><strong>${s.cumulativeUsers.toLocaleString('ko-KR')}<i>명</i></strong></div></article>
       <article><span class="metric-icon favorite" aria-hidden="true">★</span><div><small>애청자 수</small><strong>${s.followers.toLocaleString('ko-KR')}<i>명</i></strong></div></article>
       <article class="subscriber-stat"><span class="metric-icon subscribe" aria-hidden="true"><i></i></span><div><small>구독팬 수</small><strong>${(s.subscribers.basic + s.subscribers.plus).toLocaleString('ko-KR')}<i>명</i></strong><p><b>베이직 ${s.subscribers.basic.toLocaleString('ko-KR')}</b><b>플러스 ${s.subscribers.plus.toLocaleString('ko-KR')}</b></p></div></article>
+      <article><span class="metric-icon rank-position" aria-hidden="true">#</span><div><small>전체 순위</small><strong>${overallRank ? `${overallRank.toLocaleString('ko-KR')}<i>위</i>` : '미집계'}</strong></div></article>
+      <article><span class="metric-icon rank-percent" aria-hidden="true">%</span><div><small>전체 스트리머 기준</small><strong>${topPercent == null ? '미집계' : `상위 ${topPercent < 0.1 ? topPercent.toFixed(2) : topPercent.toFixed(1)}<i>%</i>`}</strong></div></article>
     </section>
     <section class="tier-card" style="--tier:${info.current.color}"><div class="tier-visual">${rankCrest(info.current)}<strong>${info.current.name}</strong></div><div class="tier-numbers"><div><span>현재 누적 유저</span><strong>${s.cumulativeUsers.toLocaleString('ko-KR')}</strong></div><div><span>다음 목표</span><strong>${info.next ? `${info.next.name} · ${formatCompact(info.next.min)}` : '최고 등급 달성'}</strong></div><div class="detail-progress"><div><span>${info.next ? `${formatCompact(info.remaining)} 남음` : '모든 등급 완료'}</span><strong>${info.progress.toFixed(1)}%</strong></div><div class="progress"><i style="width:${info.progress}%"></i></div></div></div></section>
     <section class="detail-grid"><article class="panel history"><div class="panel-title"><div><span>GROWTH</span><h2>누적 유저 변화</h2></div><div class="growth-summary">${periodGrowth == null ? '' : `<strong>+${formatCompact(periodGrowth)}<small>선택 기간 증가량</small></strong>`}<div class="period-tabs" role="tablist" aria-label="성장 그래프 기간">${[['daily','일별'],['monthly','월별'],['yearly','연별']].map(([key,label]) => `<a role="tab" aria-selected="${state.period === key}" class="${state.period === key ? 'active' : ''}" href="/streamer/${encodeURIComponent(id)}?period=${key}">${label}</a>`).join('')}</div></div></div>${chart(s)}</article><article class="panel log"><div class="panel-title"><div><span>EMBLEM LOG</span><h2>등급 변경 기록</h2></div></div><div class="timeline"><i></i><div><strong>${info.current.name}</strong><span>현재 SOOP 누적 조회수 기준 자동 계산</span></div></div><div class="timeline muted"><i></i><div><strong>${info.next ? `${info.next.name} 도전 중` : '최고 등급 유지 중'}</strong><span>${info.next ? `${info.progress.toFixed(1)}% 진행` : '프레스티지'}</span></div></div><p>등급 변경 기록은 실제 데이터가 축적된 이후 표시됩니다.</p></article></section>
