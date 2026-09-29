@@ -1,10 +1,12 @@
 import './styles.css';
 import './emblem-overrides.css';
-import { streamers, categories } from './data.js';
+import { streamers, categories, lastUpdated, loadStreamers, addStreamer } from './data.js';
 import { getTierInfo, formatCompact } from './tiers.js';
 
 const app = document.querySelector('#app');
 const state = { query: '', category: '전체', tier: '전체 등급', sort: '누적 유저 많은 순', imminent: false, period: 'monthly' };
+let loadError = '';
+let searchBusy = false;
 
 const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
 const tierAssetKey = (tier) => ({ 미등급: 'unranked', 실버: 'silver', 골드: 'gold', 플래티넘: 'platinum', 에메랄드: 'emerald', 다이아: 'diamond', 프레스티지: 'prestige' }[tier.group]);
@@ -17,7 +19,7 @@ const medal = (tier) => {
   const emblemClass = tierAssetKey(tier);
   return `<span class="emblem emblem-${emblemClass}" style="--tier:${tier.color}" aria-hidden="true"><img class="emblem-icon" src="${listRankImage(tier)}" alt=""/><b>${rank}</b></span>`;
 };
-const avatar = (s, large = false) => `<span class="avatar ${large ? 'avatar-large' : ''}" style="--accent:${s.accent}">${escapeHtml(s.initials)}</span>`;
+const avatar = (s, large = false) => `<span class="avatar ${large ? 'avatar-large' : ''}" style="--accent:${s.accent}">${s.profileImage ? `<img src="${escapeHtml(s.profileImage)}" alt="" referrerpolicy="no-referrer"/>` : escapeHtml(s.initials)}</span>`;
 const avatarFrame = (tier) => tierAssetKey(tier) === 'prestige'
   ? '<span class="prestige-avatar-frame" aria-hidden="true"><img src="/emblems/frames/prestige-avatar.png" alt=""/></span>'
   : tierArt(tier, 'avatar');
@@ -41,11 +43,12 @@ function getFiltered() {
 }
 
 function header() {
-  return `<header class="site-header"><div class="header-inner"><button class="brand" data-home aria-label="홈으로"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/></button><nav aria-label="주요 메뉴"><button class="nav-active" data-home>랭킹</button><button id="nav-imminent">승급 임박</button><button>등급표</button></nav><span class="update"><b>DEMO</b> 샘플 데이터 · 2026.09.29</span></div></header>`;
+  const updated = lastUpdated ? lastUpdated.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '불러오는 중';
+  return `<header class="site-header"><div class="header-inner"><button class="brand" data-home aria-label="홈으로"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/></button><nav aria-label="주요 메뉴"><button class="nav-active" data-home>랭킹</button><button id="nav-imminent">승급 임박</button><button>등급표</button></nav><span class="update"><b>LIVE DATA</b> SOOP 공개 데이터 · ${updated}</span></div></header>`;
 }
 
 function controls() {
-  return `<section class="search-hero"><img class="search-brand" src="/brand/soopgg-logo.png" alt="SOOP.GG"/><label class="search"><span>⌕</span><input id="search" type="search" value="${escapeHtml(state.query)}" placeholder="스트리머 닉네임 또는 SOOP ID" autocomplete="off"/><button type="button" aria-label="검색">검색</button></label></section>
+  return `<section class="search-hero"><img class="search-brand" src="/brand/soopgg-logo.png" alt="SOOP.GG"/><label class="search"><span>⌕</span><input id="search" type="search" value="${escapeHtml(state.query)}" placeholder="닉네임 검색 또는 SOOP ID 입력" autocomplete="off"/><button type="button" id="search-submit" aria-label="SOOP 채널 검색" ${searchBusy ? 'disabled' : ''}>${searchBusy ? '조회 중' : '검색'}</button></label>${loadError ? `<p class="data-error" role="alert">${escapeHtml(loadError)}</p>` : ''}</section>
   <section class="rank-tools" aria-label="스트리머 검색과 필터"><div class="category-row">${categories.map(c => `<button class="chip ${state.category === c ? 'active' : ''}" data-category="${c}">${c}</button>`).join('')}</div><div class="filter-row"><div><select id="tier" aria-label="등급 필터">${['전체 등급','미등급','실버','골드','플래티넘','에메랄드','다이아','프레스티지'].map(v => `<option ${state.tier === v ? 'selected' : ''}>${v}</option>`).join('')}</select><select id="sort" aria-label="정렬 방식">${['누적 유저 많은 순','누적 유저 적은 순','다음 등급 임박 순','닉네임 가나다순'].map(v => `<option ${state.sort === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div><button class="imminent ${state.imminent ? 'active' : ''}" id="imminent">${state.imminent ? '✓' : '↗'} 승급 임박</button></div></section>`;
 }
 
@@ -65,14 +68,15 @@ function row(s, index) {
 
 function renderList() {
   const items = getFiltered();
-  app.innerHTML = `${header()}<main>${controls()}<div class="list-head"><div><span class="rank-title-icon">≡</span><strong>${state.category === '전체' ? '전체' : state.category} 스트리머 랭킹</strong><span>${items.length}명</span></div><span>업데이트 2026.09.29 · 샘플 데이터</span></div>
+  app.innerHTML = `${header()}<main>${controls()}<div class="list-head"><div><span class="rank-title-icon">≡</span><strong>${state.category === '전체' ? '전체' : state.category} 스트리머 랭킹</strong><span>${items.length}명</span></div><span>SOOP 공개 채널 데이터 · 페이지를 열 때 갱신</span></div>
   <section class="streamer-list">${items.length ? items.map(row).join('') : `<div class="empty"><strong>조건에 맞는 스트리머가 없어요.</strong><span>검색어나 필터를 바꿔보세요.</span><button id="reset">필터 초기화</button></div>`}</section>
-  <footer><p>본 사이트는 SOOP 공식 서비스가 아닌 팬 제작 정보 사이트입니다.</p><p>현재 화면의 데이터는 UI 확인을 위한 샘플이며 실제 수치와 다를 수 있습니다.</p></footer></main>`;
+  <footer><p>본 사이트는 SOOP 공식 서비스가 아닌 팬 제작 정보 사이트입니다.</p><p>수치는 SOOP 공개 채널 응답에서 불러오며, 플랫폼 반영 시점에 따라 차이가 날 수 있습니다.</p></footer></main>`;
   bindList();
 }
 
 function chart(s) {
   const data = s.history[state.period];
+  if (data.length < 2) return `<div class="chart-empty"><strong>성장 기록 수집 전</strong><span>SOOP 공개 응답은 현재 누적값만 제공해요. 이후 저장된 기록부터 변화 그래프가 표시됩니다.</span></div>`;
   const periodLabel = { daily: '최근 7일', monthly: '최근 7개월', yearly: '최근 5년' }[state.period];
   const max = Math.max(...data.map(h => h.value));
   const min = Math.min(...data.map(h => h.value)) * .96;
@@ -87,20 +91,22 @@ function renderDetail(id) {
   if (['daily', 'monthly', 'yearly'].includes(requestedPeriod)) state.period = requestedPeriod;
   const info = getTierInfo(s.cumulativeUsers);
   const periodData = s.history[state.period];
-  const periodGrowth = periodData.at(-1).value - periodData[0].value;
-  const livePanel = s.isLive ? `<a class="live-card" href="https://bj.afreecatv.com/${encodeURIComponent(s.soopId)}" target="_blank" rel="noopener noreferrer"><span class="live-thumb" style="--accent:${s.accent}"><b><i></i> ${s.liveViewers.toLocaleString('ko-KR')}</b><strong>${escapeHtml(s.initials)}</strong></span><span class="live-title"><i>LIVE</i>${escapeHtml(s.liveTitle)}</span></a>` : `<a class="station" href="https://bj.afreecatv.com/${encodeURIComponent(s.soopId)}" target="_blank" rel="noopener noreferrer">SOOP 방송국 바로가기</a>`;
+  const periodGrowth = periodData.length > 1 ? periodData.at(-1).value - periodData[0].value : null;
+  const stationUrl = `https://www.sooplive.com/station/${encodeURIComponent(s.soopId)}`;
+  const liveUrl = s.broadNo ? `https://play.sooplive.com/${encodeURIComponent(s.soopId)}/${s.broadNo}` : stationUrl;
+  const livePanel = s.isLive ? `<a class="live-card" href="${liveUrl}" target="_blank" rel="noopener noreferrer"><span class="live-thumb" style="--accent:${s.accent}"><b><i></i> ${s.liveViewers.toLocaleString('ko-KR')}</b><strong>${escapeHtml(s.initials)}</strong></span><span class="live-title"><i>LIVE</i>${escapeHtml(s.liveTitle || '현재 라이브 방송')}</span></a>` : `<a class="station" href="${stationUrl}" target="_blank" rel="noopener noreferrer">SOOP 방송국 바로가기</a>`;
   app.innerHTML = `${header()}<main class="detail"><button class="back" data-home>‹ 전체 랭킹으로</button>
-    <section class="profile-hero"><div class="profile-main">${rankedAvatar(s, info.current)}<div><span class="category">${s.category}</span><h1>${escapeHtml(s.nickname)} <em>DEMO</em></h1><p>@${escapeHtml(s.soopId)}</p></div></div>${livePanel}</section>
+    <section class="profile-hero"><div class="profile-main">${rankedAvatar(s, info.current)}<div><span class="category">${s.category}</span><h1>${escapeHtml(s.nickname)} <em>SOOP</em></h1><p>@${escapeHtml(s.soopId)}</p></div></div>${livePanel}</section>
     <section class="profile-stats" aria-label="스트리머 주요 정보">
       <article><span class="metric-icon purple">◷</span><div><small>총 방송 시간</small><strong>${s.totalBroadcastHours.toLocaleString('ko-KR')}<i>시간</i></strong></div></article>
       <article><span class="metric-icon blue">◉</span><div><small>누적 유저</small><strong>${s.cumulativeUsers.toLocaleString('ko-KR')}<i>명</i></strong></div></article>
       <article><span class="metric-icon favorite" aria-hidden="true">★</span><div><small>애청자 수</small><strong>${s.followers.toLocaleString('ko-KR')}<i>명</i></strong></div></article>
       <article class="subscriber-stat"><span class="metric-icon subscribe" aria-hidden="true"><i>▶</i></span><div><small>구독팬 수</small><strong>${(s.subscribers.basic + s.subscribers.plus).toLocaleString('ko-KR')}<i>명</i></strong><p><b>베이직 ${s.subscribers.basic.toLocaleString('ko-KR')}</b><b>플러스 ${s.subscribers.plus.toLocaleString('ko-KR')}</b></p></div></article>
-      <article><span class="metric-icon fanclub" aria-hidden="true">♥</span><div><small>팬클럽 수</small><strong>${s.fanClub.toLocaleString('ko-KR')}<i>명</i></strong></div></article>
+      <article><span class="metric-icon fanclub" aria-hidden="true">♥</span><div><small>팬클럽 수</small><strong>${s.fanClub == null ? '미제공' : `${s.fanClub.toLocaleString('ko-KR')}<i>명</i>`}</strong></div></article>
     </section>
     <section class="tier-card" style="--tier:${info.current.color}"><div class="tier-visual">${rankCrest(info.current)}<span>CURRENT EMBLEM</span><strong>${info.current.name}</strong></div><div class="tier-numbers"><div><span>현재 누적 유저</span><strong>${s.cumulativeUsers.toLocaleString('ko-KR')}</strong></div><div><span>다음 목표</span><strong>${info.next ? `${info.next.name} · ${formatCompact(info.next.min)}` : '최고 등급 달성'}</strong></div><div class="detail-progress"><div><span>${info.next ? `${formatCompact(info.remaining)} 남음` : '모든 등급 완료'}</span><strong>${info.progress.toFixed(1)}%</strong></div><div class="progress"><i style="width:${info.progress}%"></i></div></div></div></section>
-    <section class="detail-grid"><article class="panel history"><div class="panel-title"><div><span>GROWTH</span><h2>누적 유저 변화</h2></div><div class="growth-summary"><strong>+${formatCompact(periodGrowth)}<small>선택 기간 증가량</small></strong><div class="period-tabs" role="tablist" aria-label="성장 그래프 기간">${[['daily','일별'],['monthly','월별'],['yearly','연별']].map(([key,label]) => `<a role="tab" aria-selected="${state.period === key}" class="${state.period === key ? 'active' : ''}" href="/streamer/${encodeURIComponent(id)}?period=${key}">${label}</a>`).join('')}</div></div></div>${chart(s)}</article><article class="panel log"><div class="panel-title"><div><span>EMBLEM LOG</span><h2>등급 변경 기록</h2></div></div><div class="timeline"><i></i><div><strong>${info.current.name} 달성</strong><span>현재 누적 유저 기준 자동 계산</span></div></div><div class="timeline muted"><i></i><div><strong>${info.next ? `${info.next.name} 도전 중` : '최고 등급 유지 중'}</strong><span>${info.next ? `${info.progress.toFixed(1)}% 진행` : '프레스티지'}</span></div></div><p>실제 데이터 연동 후 승급 이력이 표시됩니다.</p></article></section>
-    <footer><p>본 사이트는 SOOP 공식 서비스가 아닌 팬 제작 정보 사이트입니다.</p><p>현재 데이터는 UI 확인을 위한 샘플입니다.</p></footer></main>`;
+    <section class="detail-grid"><article class="panel history"><div class="panel-title"><div><span>GROWTH</span><h2>누적 유저 변화</h2></div><div class="growth-summary">${periodGrowth == null ? '' : `<strong>+${formatCompact(periodGrowth)}<small>선택 기간 증가량</small></strong>`}<div class="period-tabs" role="tablist" aria-label="성장 그래프 기간">${[['daily','일별'],['monthly','월별'],['yearly','연별']].map(([key,label]) => `<a role="tab" aria-selected="${state.period === key}" class="${state.period === key ? 'active' : ''}" href="/streamer/${encodeURIComponent(id)}?period=${key}">${label}</a>`).join('')}</div></div></div>${chart(s)}</article><article class="panel log"><div class="panel-title"><div><span>EMBLEM LOG</span><h2>등급 변경 기록</h2></div></div><div class="timeline"><i></i><div><strong>${info.current.name}</strong><span>현재 SOOP 누적 조회수 기준 자동 계산</span></div></div><div class="timeline muted"><i></i><div><strong>${info.next ? `${info.next.name} 도전 중` : '최고 등급 유지 중'}</strong><span>${info.next ? `${info.progress.toFixed(1)}% 진행` : '프레스티지'}</span></div></div><p>등급 변경 기록은 실제 데이터가 축적된 이후 표시됩니다.</p></article></section>
+    <footer><p>본 사이트는 SOOP 공식 서비스가 아닌 팬 제작 정보 사이트입니다.</p><p>${escapeHtml(s.dataSource)} · ${new Date(s.lastUpdated).toLocaleString('ko-KR')} 기준</p></footer></main>`;
   bindHome();
 }
 
@@ -110,6 +116,25 @@ function bindList() {
   bindHome();
   const search = document.querySelector('#search');
   search.addEventListener('input', e => { state.query = e.target.value; renderList(); document.querySelector('#search').focus(); document.querySelector('#search').setSelectionRange(state.query.length, state.query.length); });
+  const submitSearch = async () => {
+    const query = state.query.trim().replace(/^@/, '');
+    const local = streamers.find(s => s.soopId.toLowerCase() === query.toLowerCase() || s.nickname.toLowerCase() === query.toLowerCase());
+    if (local) { navigate(local.soopId); return; }
+    if (!query) return;
+    searchBusy = true; loadError = ''; renderList();
+    try {
+      const streamer = await addStreamer(query);
+      state.query = '';
+      searchBusy = false;
+      navigate(streamer.soopId);
+    } catch (error) {
+      loadError = error.message;
+      searchBusy = false;
+      renderList();
+    }
+  };
+  document.querySelector('#search-submit')?.addEventListener('click', submitSearch);
+  search.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); submitSearch(); } });
   document.querySelectorAll('[data-category]').forEach(b => b.onclick = () => { state.category = b.dataset.category; renderList(); });
   document.querySelector('#tier').onchange = e => { state.tier = e.target.value; renderList(); };
   document.querySelector('#sort').onchange = e => { state.sort = e.target.value; renderList(); };
@@ -121,5 +146,17 @@ function bindList() {
 
 window.addEventListener('popstate', route);
 window.addEventListener('keydown', e => { if (e.key === '/' && !['INPUT','SELECT'].includes(document.activeElement.tagName)) { e.preventDefault(); document.querySelector('#search')?.focus(); } });
-function route() { const match = location.pathname.match(/^\/streamer\/([^/]+)/); match ? renderDetail(decodeURIComponent(match[1])) : renderList(); }
-route();
+async function route() {
+  const match = location.pathname.match(/^\/streamer\/([^/]+)/);
+  if (match) {
+    const id = decodeURIComponent(match[1]);
+    if (!streamers.some(s => s.soopId === id)) {
+      try { await addStreamer(id); } catch { history.replaceState({}, '', '/'); }
+    }
+  }
+  const current = location.pathname.match(/^\/streamer\/([^/]+)/);
+  current ? renderDetail(decodeURIComponent(current[1])) : renderList();
+}
+
+app.innerHTML = `<main class="loading-state"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/><strong>SOOP 실제 데이터를 불러오는 중입니다</strong><span>공개 채널 정보를 확인하고 있어요.</span></main>`;
+loadStreamers().then(route).catch(error => { loadError = error.message; renderList(); });
