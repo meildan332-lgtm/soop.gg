@@ -59,9 +59,10 @@ async function loadCategoryBatch({ reset = false } = {}) {
   } while (hasMoreStreamers && categoryMatchCount() - before < batchSize);
 }
 
-function header() {
+function header(withSearch = false) {
   const updated = lastUpdated ? lastUpdated.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '불러오는 중';
-  return `<header class="site-header"><div class="header-inner"><button class="brand" data-home aria-label="홈으로"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/></button><nav aria-label="주요 메뉴"><button class="${state.view === 'ranking' ? 'nav-active' : ''}" data-home>랭킹</button><button class="${state.view === 'imminent' ? 'nav-active' : ''}" id="nav-imminent">승급 임박</button><div class="category-menu"><button class="${state.view === 'category' ? 'nav-active' : ''}" id="nav-category">카테고리</button><div class="category-dropdown" aria-label="카테고리 메뉴">${categories.filter(c => c !== '전체').map(c => `<button data-nav-category="${c}">${c}</button>`).join('')}</div></div></nav><span class="update"><b>LIVE DATA</b> SOOP 공개 데이터 · ${updated}</span></div></header>`;
+  const search = withSearch ? `<form class="header-search" id="detail-search"><span>⌕</span><input id="detail-search-input" value="" placeholder="닉네임 또는 SOOP ID 검색" autocomplete="off"/><button aria-label="검색">검색</button></form>` : '';
+  return `<header class="site-header"><div class="header-inner"><button class="brand" data-home aria-label="홈으로"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/></button><nav aria-label="주요 메뉴"><button class="${state.view === 'ranking' ? 'nav-active' : ''}" data-home>랭킹</button><button class="${state.view === 'imminent' ? 'nav-active' : ''}" id="nav-imminent">승급 임박</button><div class="category-menu"><button class="${state.view === 'category' ? 'nav-active' : ''}" id="nav-category">카테고리</button><div class="category-dropdown" aria-label="카테고리 메뉴">${categories.filter(c => c !== '전체').map(c => `<button data-nav-category="${c}">${c}</button>`).join('')}</div></div></nav>${search}<span class="update"><b>LIVE DATA</b> SOOP 공개 데이터 · ${updated}</span></div></header>`;
 }
 
 function controls() {
@@ -136,7 +137,7 @@ function renderDetail(id) {
   const stationUrl = `https://www.sooplive.com/station/${encodeURIComponent(s.soopId)}`;
   const liveUrl = s.broadNo ? `https://play.sooplive.com/${encodeURIComponent(s.soopId)}/${s.broadNo}` : stationUrl;
   const livePanel = s.isLive ? `<a class="live-card" href="${liveUrl}" target="_blank" rel="noopener noreferrer"><span class="live-thumb" style="--accent:${s.accent}"><img src="${escapeHtml(s.liveThumbnail)}" alt="${escapeHtml(s.nickname)} 라이브 방송 썸네일" referrerpolicy="no-referrer"/><b><i></i> ${s.liveViewers.toLocaleString('ko-KR')}</b><strong>${escapeHtml(s.initials)}</strong></span><span class="live-title"><i>LIVE</i><span>${escapeHtml(s.liveTitle || '현재 라이브 방송')}</span></span></a>` : `<a class="station" href="${stationUrl}" target="_blank" rel="noopener noreferrer">SOOP 방송국 바로가기</a>`;
-  app.innerHTML = `${header()}<main class="detail"><form class="detail-search" id="detail-search"><span>⌕</span><input id="detail-search-input" value="" placeholder="닉네임 또는 SOOP ID 검색" autocomplete="off"/><button>검색</button></form><button class="back" data-home>‹ 전체 랭킹으로</button>
+  app.innerHTML = `${header(true)}<main class="detail"><button class="back" data-home>‹ 전체 랭킹으로</button>
     <section class="profile-hero"><div class="profile-main">${rankedAvatar(s, info.current)}<div><span class="category">${s.category}</span><h1>${escapeHtml(s.nickname)} <em>SOOP</em></h1><p>@${escapeHtml(s.soopId)}</p></div></div>${livePanel}</section>
     <section class="profile-stats" aria-label="스트리머 주요 정보">
       <article><span class="metric-icon purple">◷</span><div><small>총 방송 시간</small><strong>${s.totalBroadcastHours.toLocaleString('ko-KR')}<i>시간</i></strong></div></article>
@@ -152,7 +153,7 @@ function renderDetail(id) {
 }
 
 function renderDetailError(id) {
-  app.innerHTML = `${header()}<main class="detail"><form class="detail-search" id="detail-search"><span>⌕</span><input id="detail-search-input" value="${escapeHtml(id)}" placeholder="닉네임 또는 SOOP ID 검색" autocomplete="off"/><button>검색</button></form><section class="detail-error"><strong>스트리머 정보를 불러오지 못했습니다.</strong><span>SOOP ID를 확인한 뒤 다시 검색해 주세요.</span></section></main>`;
+  app.innerHTML = `${header(true)}<main class="detail"><section class="detail-error"><strong>스트리머 정보를 불러오지 못했습니다.</strong><span>SOOP ID를 확인한 뒤 다시 검색해 주세요.</span></section></main>`;
   bindHome(); bindDetailSearch();
 }
 
