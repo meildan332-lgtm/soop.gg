@@ -40,6 +40,19 @@ function getFiltered() {
   });
 }
 
+const categoryMatchCount = () => streamers.filter(s =>
+  state.category === '전체' || (s.categoryGroup || s.category) === state.category
+).length;
+
+async function loadCategoryBatch({ reset = false } = {}) {
+  const before = reset ? 0 : categoryMatchCount();
+  let first = true;
+  do {
+    await loadStreamers({ reset: reset && first, category: state.category });
+    first = false;
+  } while (hasMoreStreamers && categoryMatchCount() - before < 100);
+}
+
 function header() {
   const updated = lastUpdated ? lastUpdated.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '불러오는 중';
   return `<header class="site-header"><div class="header-inner"><button class="brand" data-home aria-label="홈으로"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/></button><nav aria-label="주요 메뉴"><button class="nav-active" data-home>랭킹</button><button id="nav-imminent">승급 임박</button><button>등급표</button></nav><span class="update"><b>LIVE DATA</b> SOOP 공개 데이터 · ${updated}</span></div></header>`;
@@ -83,7 +96,7 @@ function observeMore() {
     listObserver.disconnect();
     sentinel.classList.add('loading');
     sentinel.innerHTML = '<span class="loader"></span>다음 100명을 불러오는 중…';
-    try { await loadStreamers({ reset: false, category: state.category }); loadError = ''; }
+    try { await loadCategoryBatch(); loadError = ''; }
     catch (error) { loadError = error.message; }
     renderList();
   }, { rootMargin: '400px 0px' });
@@ -163,7 +176,7 @@ function bindList() {
   document.querySelectorAll('[data-category]').forEach(b => b.onclick = async () => {
     state.category = b.dataset.category;
     app.innerHTML = `<main class="loading-state"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/><strong>${escapeHtml(state.category)} 스트리머를 불러오는 중입니다</strong><span>SOOP 목록을 확인하고 있어요.</span></main>`;
-    try { await loadStreamers({ reset: true, category: state.category }); loadError = ''; }
+    try { await loadCategoryBatch({ reset: true }); loadError = ''; }
     catch (error) { loadError = error.message; }
     renderList();
   });
