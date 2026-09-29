@@ -96,6 +96,7 @@ const streamerCache = new Map();
 let directoryPage = 0;
 let activeDirectoryCategory = 'all';
 let activePageSize = 100;
+export const AUTO_LOAD_TARGET = 500; // 전체 탭은 100명씩 이 인원까지 자동으로 이어서 불러온다
 
 const directoryCategory = {
   '전체': 'all', '게임': 'game', '버추얼': 'all', '보이는 라디오': 'talkcam',

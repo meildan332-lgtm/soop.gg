@@ -1,6 +1,6 @@
 import './styles.css';
 import './emblem-overrides.css';
-import { streamers, categories, lastUpdated, loadStreamers, addStreamer, searchStreamers, hasMoreStreamers, streamersLoading, rankingPopulation } from './data.js';
+import { AUTO_LOAD_TARGET, streamers, categories, lastUpdated, loadStreamers, addStreamer, searchStreamers, hasMoreStreamers, streamersLoading, rankingPopulation } from './data.js';
 import { getTierInfo, formatCompact } from './tiers.js';
 
 const app = document.querySelector('#app');
@@ -49,6 +49,23 @@ const categoryMatchCount = () => streamers.filter(s =>
   !s.searchOnly && (state.category === '전체' || (s.categoryGroup || s.category) === state.category)
 ).length;
 
+let fillToken = 0;
+let filling = false;
+// 첫 100명을 보여준 뒤, 전체 탭은 100명씩 차례로 이어서 불러온다(AUTO_LOAD_TARGET까지).
+async function autoFill() {
+  const token = ++fillToken;
+  filling = true;
+  while (token === fillToken && state.category === '전체' && hasMoreStreamers && categoryMatchCount() < AUTO_LOAD_TARGET) {
+    if (streamersLoading) { await new Promise(r => setTimeout(r, 200)); continue; }
+    try { await loadCategoryBatch(); loadError = ''; } catch (error) { loadError = error.message; break; }
+    if (token === fillToken && !location.pathname.startsWith('/streamer/')) renderList();
+  }
+  if (token === fillToken) {
+    filling = false;
+    if (!location.pathname.startsWith('/streamer/')) renderList();
+  }
+}
+
 async function loadCategoryBatch({ reset = false } = {}) {
   const before = reset ? 0 : categoryMatchCount();
   const batchSize = state.category === '전체' ? 100 : 30;
@@ -92,7 +109,7 @@ function row(s, index) {
 
 function renderList() {
   const items = getFiltered();
-  app.innerHTML = `${header()}<main>${controls()}<div class="list-head"><div><span class="rank-title-icon">≡</span><strong>${state.category === '전체' ? 'SOOP 스트리머 랭킹' : state.category + ' 스트리머 랭킹'}</strong><span>${items.length}명 불러옴</span></div><div class="list-actions"><span>${state.category === '전체' ? '처음 100명 · 스크롤할 때마다 다음 100명 추가' : '처음 30명 · 스크롤할 때마다 다음 30명 추가'}</span><select id="tier" aria-label="등급 필터">${['전체 등급','미등급','실버','골드','플래티넘','에메랄드','다이아','프레스티지'].map(v => `<option ${state.tier === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div></div>
+  app.innerHTML = `${header()}<main>${controls()}<div class="list-head"><div><span class="rank-title-icon">≡</span><strong>${state.category === '전체' ? 'SOOP 스트리머 랭킹' : state.category + ' 스트리머 랭킹'}</strong><span>${items.length}명 불러옴</span></div><div class="list-actions"><span>${state.category === '전체' ? '처음 100명 · 이후 100명씩 이어서 추가' : '처음 30명 · 스크롤할 때마다 다음 30명 추가'}</span><select id="tier" aria-label="등급 필터">${['전체 등급','미등급','실버','골드','플래티넘','에메랄드','다이아','프레스티지'].map(v => `<option ${state.tier === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div></div>
   <section class="streamer-list">${items.length ? items.map(row).join('') : `<div class="empty"><strong>조건에 맞는 스트리머가 없어요.</strong><span>${hasMoreStreamers ? '다음 스트리머를 불러오는 중입니다.' : '검색어나 필터를 바꿔보세요.'}</span><button id="reset">필터 초기화</button></div>`}</section>
   ${hasMoreStreamers ? `<div class="load-sentinel" id="load-more"><span class="loader"></span>${streamersLoading ? '불러오는 중…' : `아래로 스크롤하면 ${state.category === '전체' ? 100 : 30}명을 더 불러옵니다`}</div>` : ''}
   <footer><p>본 사이트는 SOOP 공식 서비스가 아닌 팬 제작 정보 사이트입니다.</p><p>수치는 SOOP 공개 채널 응답에서 불러오며, 플랫폼 반영 시점에 따라 차이가 날 수 있습니다.</p></footer></main>`;
@@ -103,7 +120,7 @@ function renderList() {
 function observeMore() {
   listObserver?.disconnect();
   const sentinel = document.querySelector('#load-more');
-  if (!sentinel || streamersLoading) return;
+  if (!sentinel || streamersLoading || filling) return;
   listObserver = new IntersectionObserver(async entries => {
     if (!entries[0].isIntersecting || streamersLoading) return;
     listObserver.disconnect();
@@ -167,8 +184,10 @@ async function openCategory(category) {
   state.sort = '누적 유저 많은 순';
   history.pushState({}, '', '/');
   app.innerHTML = `<main class="loading-state"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/><strong>SOOP에서 데이터를 불러오고 있습니다</strong></main>`;
+  fillToken++; filling = false;
   try { await loadCategoryBatch({ reset: true }); loadError = ''; } catch (error) { loadError = error.message; }
   renderList();
+  autoFill();
 }
 function bindHome() {
   document.querySelectorAll('[data-home]').forEach(el => el.onclick = () => { Object.assign(state, { category: '전체', imminent: false, sort: '누적 유저 많은 순', view: 'ranking' }); history.pushState({}, '', '/'); renderList(); });
@@ -265,4 +284,4 @@ async function route() {
 }
 
 app.innerHTML = `<main class="loading-state"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/><strong>SOOP에서 데이터를 불러오고 있습니다</strong></main>`;
-loadStreamers().then(route).catch(error => { loadError = error.message; renderList(); });
+loadStreamers().then(() => { route(); autoFill(); }).catch(error => { loadError = error.message; renderList(); });
