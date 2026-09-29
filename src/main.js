@@ -1,6 +1,6 @@
 import './styles.css';
 import './emblem-overrides.css';
-import { streamers, categories, lastUpdated, loadStreamers, addStreamer, hasMoreStreamers, streamersLoading } from './data.js';
+import { streamers, categories, lastUpdated, loadStreamers, addStreamer, searchStreamers, hasMoreStreamers, streamersLoading } from './data.js';
 import { getTierInfo, formatCompact } from './tiers.js';
 
 const app = document.querySelector('#app');
@@ -9,6 +9,7 @@ let loadError = '';
 let searchBusy = false;
 let listObserver;
 let draftQuery = '';
+let searchTimer;
 const streamerAliases = new Map([
   ['철구', 'y1026'], ['철구형', 'y1026'], ['철구형2', 'y1026'], ['철구형2↑', 'y1026']
 ]);
@@ -198,7 +199,15 @@ function bindList() {
     suggestions.hidden = matches.length === 0;
     suggestions.querySelectorAll('[data-suggestion]').forEach(item => item.onmousedown = event => { event.preventDefault(); navigate(item.dataset.suggestion); });
   };
-  search.addEventListener('input', e => { draftQuery = e.target.value; showSuggestions(); });
+  search.addEventListener('input', e => {
+    draftQuery = e.target.value;
+    showSuggestions();
+    clearTimeout(searchTimer);
+    if (draftQuery.trim().length >= 2) searchTimer = setTimeout(async () => {
+      const requested = draftQuery.trim();
+      try { await searchStreamers(requested); if (draftQuery.trim() === requested) showSuggestions(); } catch { /* local matches remain available */ }
+    }, 280);
+  });
   search.addEventListener('focus', showSuggestions);
   search.addEventListener('blur', () => setTimeout(() => { suggestions.hidden = true; }, 120));
   const submitSearch = async () => {
@@ -209,6 +218,14 @@ function bindList() {
     const local = streamers.find(s => s.soopId.toLowerCase() === normalized || s.nickname.toLowerCase() === normalized) || (matches.length === 1 ? matches[0] : null);
     if (local) { navigate(local.soopId); return; }
     if (matches.length > 1) { suggestions.hidden = false; return; }
+    if (!/^[0-9A-Za-z_-]{2,40}$/.test(query.replace(/^@/, ''))) {
+      try {
+        await searchStreamers(query);
+        const remoteMatches = searchMatches(query);
+        if (remoteMatches.length === 1) { navigate(remoteMatches[0].soopId); return; }
+        if (remoteMatches.length > 1) { showSuggestions(); return; }
+      } catch { /* show the normal search error below */ }
+    }
     searchBusy = true; loadError = ''; renderList();
     try {
       const streamer = await resolveStreamer(query);

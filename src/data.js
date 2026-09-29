@@ -198,4 +198,17 @@ export async function addStreamer(soopId) {
   return streamer;
 }
 
+export async function searchStreamers(keyword) {
+  const query = String(keyword || '').trim();
+  if (!query) return [];
+  const response = await fetch(`/api/search?keyword=${encodeURIComponent(query)}`);
+  if (!response.ok) throw new Error('SOOP 닉네임 검색에 실패했습니다.');
+  const { ids = [] } = await response.json();
+  const found = (await Promise.all(ids.slice(0, 8).map(id => fetchStreamer(id).catch(() => null)))).filter(Boolean);
+  const known = new Set(streamers.map(item => item.soopId.toLowerCase()));
+  const added = found.filter(item => !known.has(item.soopId.toLowerCase()));
+  if (added.length) streamers = [...streamers, ...added];
+  return found;
+}
+
 export const categories = ['전체', '게임', '버추얼', '보이는 라디오', '스포츠', '먹방/쿡방', '음악', '여행', '교육/정보', '기타'];
