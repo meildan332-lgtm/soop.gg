@@ -89,6 +89,16 @@ function mapStation(data, seed, detectedCategory = '') {
 
 export let streamers = [];
 export let lastUpdated = null;
+export let hasMoreStreamers = true;
+export let streamersLoading = false;
+let directoryPage = 0;
+let activeDirectoryCategory = 'all';
+
+const directoryCategory = {
+  '전체': 'all', '게임': 'game', '버추얼': 'virtual', '보이는 라디오': 'talkcam',
+  '스포츠': 'sports_general', '먹방/쿡방': 'mukbang', '음악': 'music',
+  '여행': 'travel', '교육/정보': 'study', '기타': 'all'
+};
 
 export async function fetchStreamer(soopId, overrides = {}) {
   const id = String(soopId || '').trim().replace(/^@/, '');
@@ -106,17 +116,56 @@ export async function fetchStreamer(soopId, overrides = {}) {
   return mapStation(stationData, { soopId: id, category: '기타', accent: '#7968ff', ...overrides }, primaryCategory(vodData));
 }
 
-export async function loadStreamers() {
+async function fetchDirectoryPage(page, category) {
+  const response = await fetch(`/api/streamers?page=${page}&category=${encodeURIComponent(category)}`);
+  if (!response.ok) throw new Error('SOOP 스트리머 목록을 불러오지 못했습니다.');
+  const payload = await response.json();
+  if (payload.ids) return payload;
+  const result = payload.RESULT || {};
+  return { ids: (result.DATA || []).map(item => item.user_id), page, totalPages: Number(result.TOTAL_PAGE) || page };
+}
+
+export async function loadStreamers({ reset = true, category = '전체' } = {}) {
+  if (streamersLoading) return streamers;
+  streamersLoading = true;
+  const requestedCategory = directoryCategory[category] || 'all';
+  if (reset || requestedCategory !== activeDirectoryCategory) {
+    streamers = [];
+    directoryPage = 0;
+    hasMoreStreamers = true;
+    activeDirectoryCategory = requestedCategory;
+  }
+  if (!hasMoreStreamers) { streamersLoading = false; return streamers; }
+
   const loaded = [];
+  const nextPage = directoryPage + 1;
+  let directory;
+  try {
+    directory = await fetchDirectoryPage(nextPage, activeDirectoryCategory);
+  } catch (error) {
+    if (nextPage !== 1 || activeDirectoryCategory !== 'all') { streamersLoading = false; throw error; }
+    directory = { ids: rankedIds, page: 1, totalPages: 1 };
+  }
+  const known = new Set(streamers.map(item => item.soopId));
+  const seeds = directory.ids.filter(id => !known.has(id)).map((soopId, index) => ({
+    soopId, category: category === '전체' ? '기타' : category,
+    categoryGroup: category === '전체' ? '기타' : category,
+    accent: accents[(streamers.length + index) % accents.length],
+    officialRank: streamers.length + index + 1
+  }));
   let cursor = 0;
   async function worker() {
-    while (cursor < seedChannels.length) {
-      const seed = seedChannels[cursor++];
+    while (cursor < seeds.length) {
+      const seed = seeds[cursor++];
       try { loaded.push(await fetchStreamer(seed.soopId, seed)); } catch { /* unavailable channels are skipped */ }
     }
   }
   await Promise.all(Array.from({ length: 10 }, worker));
-  streamers = loaded;
+  loaded.sort((a, b) => a.officialRank - b.officialRank);
+  streamers = [...streamers, ...loaded];
+  directoryPage = nextPage;
+  hasMoreStreamers = nextPage < directory.totalPages && directory.ids.length > 0;
+  streamersLoading = false;
   lastUpdated = new Date();
   if (!streamers.length) throw new Error('SOOP 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
   return streamers;

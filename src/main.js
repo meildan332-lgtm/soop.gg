@@ -1,12 +1,13 @@
 import './styles.css';
 import './emblem-overrides.css';
-import { streamers, categories, lastUpdated, loadStreamers, addStreamer } from './data.js';
+import { streamers, categories, lastUpdated, loadStreamers, addStreamer, hasMoreStreamers, streamersLoading } from './data.js';
 import { getTierInfo, formatCompact } from './tiers.js';
 
 const app = document.querySelector('#app');
 const state = { query: '', category: '전체', tier: '전체 등급', sort: '누적 유저 많은 순', imminent: false, period: 'monthly' };
 let loadError = '';
 let searchBusy = false;
+let listObserver;
 
 const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
 const tierAssetKey = (tier) => ({ 미등급: 'unranked', 실버: 'silver', 골드: 'gold', 플래티넘: 'platinum', 에메랄드: 'emerald', 다이아: 'diamond', 프레스티지: 'prestige' }[tier.group]);
@@ -65,10 +66,28 @@ function row(s, index) {
 
 function renderList() {
   const items = getFiltered();
-  app.innerHTML = `${header()}<main>${controls()}<div class="list-head"><div><span class="rank-title-icon">≡</span><strong>${state.category === '전체' ? 'SOOP 스트리머 TOP 100' : state.category + ' 스트리머 랭킹'}</strong><span>${items.length}명</span></div><span>SOOP 누적 애청자 상위 100명 · 실제 누적 조회수 순</span></div>
-  <section class="streamer-list">${items.length ? items.map(row).join('') : `<div class="empty"><strong>조건에 맞는 스트리머가 없어요.</strong><span>검색어나 필터를 바꿔보세요.</span><button id="reset">필터 초기화</button></div>`}</section>
+  app.innerHTML = `${header()}<main>${controls()}<div class="list-head"><div><span class="rank-title-icon">≡</span><strong>${state.category === '전체' ? 'SOOP 스트리머 랭킹' : state.category + ' 스트리머 랭킹'}</strong><span>${items.length}명 불러옴</span></div><span>처음 100명 · 스크롤할 때마다 다음 100명 추가</span></div>
+  <section class="streamer-list">${items.length ? items.map(row).join('') : `<div class="empty"><strong>조건에 맞는 스트리머가 없어요.</strong><span>${hasMoreStreamers ? '다음 스트리머를 불러오는 중입니다.' : '검색어나 필터를 바꿔보세요.'}</span><button id="reset">필터 초기화</button></div>`}</section>
+  ${hasMoreStreamers ? `<div class="load-sentinel" id="load-more"><span class="loader"></span>${streamersLoading ? '불러오는 중…' : '아래로 스크롤하면 100명을 더 불러옵니다'}</div>` : ''}
   <footer><p>본 사이트는 SOOP 공식 서비스가 아닌 팬 제작 정보 사이트입니다.</p><p>수치는 SOOP 공개 채널 응답에서 불러오며, 플랫폼 반영 시점에 따라 차이가 날 수 있습니다.</p></footer></main>`;
   bindList();
+  observeMore();
+}
+
+function observeMore() {
+  listObserver?.disconnect();
+  const sentinel = document.querySelector('#load-more');
+  if (!sentinel || streamersLoading) return;
+  listObserver = new IntersectionObserver(async entries => {
+    if (!entries[0].isIntersecting || streamersLoading) return;
+    listObserver.disconnect();
+    sentinel.classList.add('loading');
+    sentinel.innerHTML = '<span class="loader"></span>다음 100명을 불러오는 중…';
+    try { await loadStreamers({ reset: false, category: state.category }); loadError = ''; }
+    catch (error) { loadError = error.message; }
+    renderList();
+  }, { rootMargin: '400px 0px' });
+  listObserver.observe(sentinel);
 }
 
 function chart(s) {
@@ -141,7 +160,13 @@ function bindList() {
   };
   document.querySelector('#search-submit')?.addEventListener('click', submitSearch);
   search.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); submitSearch(); } });
-  document.querySelectorAll('[data-category]').forEach(b => b.onclick = () => { state.category = b.dataset.category; renderList(); });
+  document.querySelectorAll('[data-category]').forEach(b => b.onclick = async () => {
+    state.category = b.dataset.category;
+    app.innerHTML = `<main class="loading-state"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/><strong>${escapeHtml(state.category)} 스트리머를 불러오는 중입니다</strong><span>SOOP 목록을 확인하고 있어요.</span></main>`;
+    try { await loadStreamers({ reset: true, category: state.category }); loadError = ''; }
+    catch (error) { loadError = error.message; }
+    renderList();
+  });
   document.querySelector('#tier').onchange = e => { state.tier = e.target.value; renderList(); };
   document.querySelector('#sort').onchange = e => { state.sort = e.target.value; renderList(); };
   document.querySelector('#imminent').onclick = () => { state.imminent = !state.imminent; if (state.imminent) state.sort = '다음 등급 임박 순'; renderList(); };
