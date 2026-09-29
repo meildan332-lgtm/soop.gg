@@ -24,9 +24,9 @@
 .tier-art-icon img { top: 0; }
 .tier-art-avatar img { top: -76%; }
 .ranked-avatar-prestige .tier-art-avatar img { top: -58%; }
-.ranked-avatar-prestige { width: 122px; height: 122px; }
-.ranked-avatar-prestige .avatar { width: 66px; height: 66px; }
-.ranked-avatar-prestige .tier-art-avatar { inset: 3px; width: 116px; height: 116px; }
+.ranked-avatar-prestige { width: 112px; height: 112px; }
+.ranked-avatar-prestige .avatar { width: 62px; height: 62px; }
+.ranked-avatar-prestige .tier-art-avatar { inset: 7px; width: 98px; height: 98px; opacity: .86; filter: saturate(.82); }
 .tier-art-crest img { top: -200%; }
 
 .emblem > .emblem-icon {
@@ -62,8 +62,8 @@
   display: none;
 }
 
-.emblem-prestige { width: 56px; height: 56px; margin: -4px; }
-.emblem-prestige > .emblem-icon { transform: scale(1.62); }
+.emblem-prestige { width: 62px; height: 58px; margin: -5px -7px; }
+.emblem-prestige > .emblem-icon { transform: scale(1.94); }
 .emblem-prestige b {
   width: 22px;
   height: 22px;
@@ -80,7 +80,7 @@
 }
 
 .tier-visual .tier-art-crest { width: 138px; height: 138px; margin-bottom: 2px; }
-.tier-visual .tier-art-crest.tier-art-prestige { width: 154px; height: 154px; margin: 0 0 -6px; }
+.tier-visual .tier-art-crest.tier-art-prestige { width: 138px; height: 138px; margin: 0 0 2px; opacity: .9; filter: saturate(.84); }
 .tier-art-crest.tier-art-prestige img { height: 250%; top: -145%; }
 
 .ranked-avatar { position: relative; width: 112px; height: 112px; display: grid; place-items: center; flex: 0 0 auto; }
