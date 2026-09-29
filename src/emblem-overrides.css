@@ -58,6 +58,32 @@
 .ranked-avatar .avatar { position: relative; z-index: 1; width: 62px; height: 62px; border-width: 2px; box-shadow: 0 0 0 4px #10131a, 0 0 24px color-mix(in srgb,var(--tier) 26%,transparent); }
 .ranked-avatar .tier-art-avatar { position: absolute; z-index: 2; inset: 0; width: 112px; height: 112px; pointer-events: none; }
 
+.metric-icon.favorite,
+.metric-icon.subscribe,
+.metric-icon.fanclub {
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  font-size: 19px;
+}
+
+.metric-icon.favorite { color: #ffc928; text-shadow: 0 0 12px rgba(255,201,40,.24); }
+.metric-icon.fanclub { color: #ff5f87; text-shadow: 0 0 12px rgba(255,95,135,.22); }
+.metric-icon.subscribe i {
+  width: 20px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  clip-path: polygon(19% 0,81% 0,100% 28%,100% 72%,81% 100%,19% 100%,0 72%,0 28%);
+  background: #f04968;
+  color: #fff;
+  font-size: 8px;
+  font-style: normal;
+  line-height: 1;
+  padding-left: 1px;
+  box-shadow: 0 0 12px rgba(240,73,104,.25);
+}
+
 @media (max-width: 640px) {
   .emblem,
   .tier-visual .emblem {
