@@ -64,8 +64,14 @@ function header() {
 }
 
 function controls() {
-  return `<section class="search-hero"><button class="search-brand-button" type="button" data-home aria-label="메인 화면으로"><img class="search-brand" src="/brand/soopgg-logo.png" alt="SOOP.GG"/></button><label class="search"><span>⌕</span><input id="search" type="search" value="${escapeHtml(draftQuery)}" placeholder="닉네임 검색 또는 SOOP ID 입력" autocomplete="off"/><button type="button" id="search-submit" aria-label="SOOP 채널 검색" ${searchBusy ? 'disabled' : ''}>${searchBusy ? '조회 중' : '검색'}</button></label>${loadError ? `<p class="data-error" role="alert">${escapeHtml(loadError)}</p>` : ''}</section>
+  return `<section class="search-hero"><button class="search-brand-button" type="button" data-home aria-label="메인 화면으로"><img class="search-brand" src="/brand/soopgg-logo.png" alt="SOOP.GG"/></button><div class="search-box"><label class="search"><span>⌕</span><input id="search" type="search" value="${escapeHtml(draftQuery)}" placeholder="닉네임 검색 또는 SOOP ID 입력" autocomplete="off" aria-autocomplete="list" aria-controls="search-suggestions"/><button type="button" id="search-submit" aria-label="SOOP 채널 검색" ${searchBusy ? 'disabled' : ''}>${searchBusy ? '조회 중' : '검색'}</button></label><div class="search-suggestions" id="search-suggestions" role="listbox" hidden></div></div>${loadError ? `<p class="data-error" role="alert">${escapeHtml(loadError)}</p>` : ''}</section>
   `;
+}
+
+function searchMatches(query) {
+  const normalized = query.trim().toLowerCase().replace(/^@/, '');
+  if (!normalized) return [];
+  return streamers.filter(s => s.nickname.toLowerCase().includes(normalized) || s.soopId.toLowerCase().includes(normalized)).slice(0, 8);
 }
 
 function row(s, index) {
@@ -185,12 +191,24 @@ function bindDetailSearch() {
 function bindList() {
   bindHome();
   const search = document.querySelector('#search');
-  search.addEventListener('input', e => { draftQuery = e.target.value; });
+  const suggestions = document.querySelector('#search-suggestions');
+  const showSuggestions = () => {
+    const matches = searchMatches(draftQuery);
+    suggestions.innerHTML = matches.map(s => `<button type="button" role="option" data-suggestion="${escapeHtml(s.soopId)}">${avatar(s)}<span><strong>${escapeHtml(s.nickname)}</strong><small>@${escapeHtml(s.soopId)} · ${escapeHtml(s.category)}</small></span></button>`).join('');
+    suggestions.hidden = matches.length === 0;
+    suggestions.querySelectorAll('[data-suggestion]').forEach(item => item.onmousedown = event => { event.preventDefault(); navigate(item.dataset.suggestion); });
+  };
+  search.addEventListener('input', e => { draftQuery = e.target.value; showSuggestions(); });
+  search.addEventListener('focus', showSuggestions);
+  search.addEventListener('blur', () => setTimeout(() => { suggestions.hidden = true; }, 120));
   const submitSearch = async () => {
     const query = draftQuery.trim();
     if (!query) { state.query = ''; renderList(); return; }
-    const local = streamers.find(s => s.soopId.toLowerCase() === query.toLowerCase() || s.nickname.toLowerCase() === query.toLowerCase());
+    const normalized = query.replace(/^@/, '').toLowerCase();
+    const matches = searchMatches(query);
+    const local = streamers.find(s => s.soopId.toLowerCase() === normalized || s.nickname.toLowerCase() === normalized) || (matches.length === 1 ? matches[0] : null);
     if (local) { navigate(local.soopId); return; }
+    if (matches.length > 1) { suggestions.hidden = false; return; }
     searchBusy = true; loadError = ''; renderList();
     try {
       const streamer = await resolveStreamer(query);
