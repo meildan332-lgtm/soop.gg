@@ -94,7 +94,7 @@ function renderList() {
   const items = getFiltered();
   app.innerHTML = `${header()}<main>${controls()}<div class="list-head"><div><span class="rank-title-icon">≡</span><strong>${state.category === '전체' ? 'SOOP 스트리머 랭킹' : state.category + ' 스트리머 랭킹'}</strong><span>${items.length}명 불러옴</span></div><div class="list-actions"><span>최대 1,000명 · 스크롤할 때마다 100명 추가</span><select id="tier" aria-label="등급 필터">${['전체 등급','미등급','실버','골드','플래티넘','에메랄드','다이아','프레스티지'].map(v => `<option ${state.tier === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div></div>
   <section class="streamer-list">${items.length ? items.map(row).join('') : `<div class="empty"><strong>조건에 맞는 스트리머가 없어요.</strong><span>${hasMoreStreamers ? '다음 스트리머를 불러오는 중입니다.' : '검색어나 필터를 바꿔보세요.'}</span><button id="reset">필터 초기화</button></div>`}</section>
-  ${hasMoreStreamers ? `<div class="load-sentinel" id="load-more"><span class="loader"></span>${streamersLoading ? '불러오는 중…' : '아래로 스크롤하면 100명을 더 불러옵니다'}</div>` : ''}
+  ${hasMoreStreamers ? `<button type="button" class="load-sentinel" id="load-more"><span class="loader"></span>${streamersLoading ? '불러오는 중…' : '100명 더 불러오기'}</button>` : `<div class="load-limit">최대 1,000명까지 모두 불러왔습니다.</div>`}
   <footer><p>본 사이트는 SOOP 공식 서비스가 아닌 팬 제작 정보 사이트입니다.</p><p>수치는 SOOP 공개 채널 응답에서 불러오며, 플랫폼 반영 시점에 따라 차이가 날 수 있습니다.</p></footer></main>`;
   bindList();
   observeMore();
@@ -104,14 +104,22 @@ function observeMore() {
   listObserver?.disconnect();
   const sentinel = document.querySelector('#load-more');
   if (!sentinel || streamersLoading) return;
-  listObserver = new IntersectionObserver(async entries => {
-    if (!entries[0].isIntersecting || streamersLoading) return;
+  let loadingNext = false;
+  const loadNext = async () => {
+    if (loadingNext || streamersLoading) return;
+    loadingNext = true;
     listObserver.disconnect();
+    sentinel.disabled = true;
     sentinel.classList.add('loading');
     sentinel.innerHTML = `<span class="loader"></span>다음 100명을 불러오는 중…`;
     try { await loadCategoryBatch(); loadError = ''; }
     catch (error) { loadError = error.message; }
     renderList();
+  };
+  sentinel.onclick = loadNext;
+  listObserver = new IntersectionObserver(entries => {
+    if (!entries[0].isIntersecting) return;
+    loadNext();
   }, { rootMargin: '400px 0px' });
   listObserver.observe(sentinel);
 }
@@ -144,35 +152,10 @@ function vodPagination(s) {
   </nav>`;
 }
 
-const TIER_HISTORY_KEY = 'soopgg-tier-history-v1';
-const EMBLEM_LAUNCH_DATE = '2026-09-29';
-
-function rememberTierHistory(soopId, currentTier) {
-  try {
-    const saved = JSON.parse(localStorage.getItem(TIER_HISTORY_KEY) || '{}');
-    const entries = Array.isArray(saved[soopId]) ? saved[soopId] : [];
-    if (!entries.length) {
-      entries.push({ name: currentTier.name, min: currentTier.min, date: EMBLEM_LAUNCH_DATE });
-    } else {
-      const highest = entries.reduce((best, item) => Number(item.min) > Number(best.min) ? item : best, entries[0]);
-      if (currentTier.min > Number(highest.min)) {
-        const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-        entries.push({ name: currentTier.name, min: currentTier.min, date: today });
-      }
-    }
-    saved[soopId] = entries;
-    localStorage.setItem(TIER_HISTORY_KEY, JSON.stringify(saved));
-    return entries;
-  } catch {
-    return [{ name: currentTier.name, min: currentTier.min, date: EMBLEM_LAUNCH_DATE }];
-  }
-}
-
 function renderDetail(id) {
   const s = streamers.find(x => x.soopId === id);
   if (!s) { renderDetailError(id); return; }
   const info = getTierInfo(s.cumulativeUsers);
-  const tierHistory = rememberTierHistory(s.soopId, info.current);
   const overallRank = (!s.searchOnly && s.officialRank) || null;
   const rankBase = rankingPopulation;
   const topPercent = overallRank && rankBase ? Math.max(0.01, overallRank / rankBase * 100) : null;
@@ -187,8 +170,6 @@ function renderDetail(id) {
       <article><div><small>애청자 수</small><strong>${s.followers.toLocaleString('ko-KR')}<i>명</i></strong></div></article>
       <article class="subscriber-stat"><div><small>구독팬 수</small><strong>${(s.subscribers.basic + s.subscribers.plus).toLocaleString('ko-KR')}<i>명</i></strong><p><b>베이직 ${s.subscribers.basic.toLocaleString('ko-KR')}</b><b>플러스 ${s.subscribers.plus.toLocaleString('ko-KR')}</b></p></div></article>
     </section>
-    <section class="tier-card" style="--tier:${info.current.color}"><div class="tier-visual">${rankCrest(info.current)}<strong>${info.current.name}</strong></div><div class="tier-numbers"><div><span>현재 누적 유저</span><strong>${s.cumulativeUsers.toLocaleString('ko-KR')}</strong></div><div><span>다음 목표</span><strong>${info.next ? `${info.next.name} · ${formatCompact(info.next.min)}` : '최고 등급 달성'}</strong></div><div class="detail-progress"><div><span>${info.next ? `${formatCompact(info.remaining)} 남음` : '모든 등급 완료'}</span><strong>${info.progress.toFixed(1)}%</strong></div><div class="progress"><i style="width:${info.progress}%"></i></div></div></div></section>
-    <section class="tier-history panel"><div class="panel-title"><div><span>TIER STATUS</span><h2>티어 현황</h2></div></div>${[...tierHistory].reverse().map((entry, index) => `<div class="tier-date-row ${index ? 'past' : ''}"><i style="--tier:${index ? '#596477' : info.current.color}"></i><div><strong>${escapeHtml(entry.name)}</strong><span>${new Date(`${entry.date}T00:00:00+09:00`).toLocaleDateString('ko-KR')} 최초 달성</span></div></div>`).join('')}<p>이 브라우저에 최초 달성일을 저장하며, 다음 티어 달성 시 확인 날짜가 자동으로 추가됩니다.</p></section>
     <section class="vod-section panel"><div class="panel-title"><div><span>RECENT VOD</span><h2>최근 VOD</h2></div><strong>${s.vodMeta?.total?.toLocaleString('ko-KR') || s.vods?.length || 0}개</strong></div>${vodList(s)}${vodPagination(s)}</section>
     <footer><p>본 사이트는 SOOP 공식 서비스가 아닌 팬 제작 정보 사이트입니다.</p><p>${escapeHtml(s.dataSource)} · ${new Date(s.lastUpdated).toLocaleString('ko-KR')} 기준</p></footer></main>`;
   bindHome();

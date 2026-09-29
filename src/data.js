@@ -180,7 +180,8 @@ async function fetchDirectoryPage(page, category, pageSize) {
   const payload = await response.json();
   if (payload.ids) {
     if (page === 1 && category === 'all') payload.ids = ['y1026', ...payload.ids.filter(id => id !== 'y1026')].slice(0, pageSize);
-    return { ...payload, totalCount: Number(payload.totalCount) || Number(payload.totalPages) * pageSize };
+    const totalCount = Number(payload.totalCount) || Number(payload.totalPages) * pageSize;
+    return { ...payload, totalCount, totalPages: Number(payload.totalPages) || Math.ceil(totalCount / pageSize) || page };
   }
   const result = payload.RESULT || {};
   let ids = (result.DATA || []).map(item => item.user_id);
@@ -232,7 +233,9 @@ export async function loadStreamers({ reset = true, category = '전체' } = {}) 
   const loadedIds = new Set(loaded.map(item => item.soopId.toLowerCase()));
   streamers = [...streamers.filter(item => !(item.searchOnly && loadedIds.has(item.soopId.toLowerCase()))), ...loaded];
   directoryPage = nextPage;
-  hasMoreStreamers = streamers.filter(item => !item.searchOnly).length < MAX_STREAMERS && nextPage < directory.totalPages && directory.ids.length > 0;
+  const loadedCount = streamers.filter(item => !item.searchOnly).length;
+  const availablePages = Number(directory.totalPages) || Math.ceil((Number(directory.totalCount) || MAX_STREAMERS) / activePageSize);
+  hasMoreStreamers = loadedCount < MAX_STREAMERS && nextPage < availablePages && directory.ids.length > 0;
   streamersLoading = false;
   lastUpdated = new Date();
   if (!streamers.length) throw new Error('SOOP 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
