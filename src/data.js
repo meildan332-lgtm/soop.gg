@@ -30,6 +30,7 @@ function mapStation(data, seed) {
     liveViewers: Number(data.broad?.current_sum_viewer) || 0,
     liveTitle: cleanText(data.broad?.broad_title || ''),
     broadNo: data.broad?.broad_no || null,
+    liveThumbnail: data.broad?.broad_no ? `https://liveimg.sooplive.com/m/${data.broad.broad_no}.jpg` : '',
     lastUpdated: data.current_timestamp ? `${data.current_timestamp}+09:00` : new Date().toISOString(),
     totalBroadcastHours: Math.round((Number(station.total_broad_time) || 0) / 3600),
     followers: Number(station.upd.fan_cnt) || 0,
