@@ -7,12 +7,14 @@ const app = document.querySelector('#app');
 const state = { query: '', category: '전체', tier: '전체 등급', sort: '누적 유저 많은 순', imminent: false, period: 'monthly' };
 
 const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
+const tierAssetKey = (tier) => ({ 미등급: 'unranked', 실버: 'silver', 골드: 'gold', 플래티넘: 'platinum', 에메랄드: 'emerald', 다이아: 'diamond', 프레스티지: 'prestige' }[tier.group]);
+const tierArt = (tier, variant, extraClass = '') => `<span class="tier-art tier-art-${variant} ${extraClass}" style="--tier:${tier.color}" aria-hidden="true"><img src="/emblems/sets/tier-${tierAssetKey(tier)}.png" alt=""/></span>`;
 const medal = (tier) => {
-  const rank = tier.name.match(/[123]$/)?.[0] ?? '';
-  const emblemClass = { 미등급: 'unranked', 실버: 'silver', 골드: 'gold', 플래티넘: 'platinum', 에메랄드: 'emerald', 다이아: 'diamond', 프레스티지: 'prestige' }[tier.group];
-  return `<span class="emblem emblem-${emblemClass}" style="--tier:${tier.color}" aria-hidden="true"><img class="emblem-icon" src="/emblems/icons/${emblemClass}.png" alt=""/><img class="emblem-full" src="/emblems/${emblemClass}.png" alt=""/><b>${rank}</b></span>`;
+  const emblemClass = tierAssetKey(tier);
+  return `<span class="emblem emblem-${emblemClass}" style="--tier:${tier.color}" aria-hidden="true">${tierArt(tier, 'icon')}</span>`;
 };
 const avatar = (s, large = false) => `<span class="avatar ${large ? 'avatar-large' : ''}" style="--accent:${s.accent}">${escapeHtml(s.initials)}</span>`;
+const rankedAvatar = (s, tier) => `<span class="ranked-avatar" style="--tier:${tier.color}">${avatar(s, true)}${tierArt(tier, 'avatar')}</span>`;
 
 function getFiltered() {
   const q = state.query.trim().toLowerCase();
@@ -83,7 +85,7 @@ function renderDetail(id) {
   const periodData = s.history[state.period];
   const periodGrowth = periodData.at(-1).value - periodData[0].value;
   app.innerHTML = `${header()}<main class="detail"><button class="back" data-home>‹ 전체 랭킹으로</button>
-    <section class="profile-hero"><div class="profile-main">${avatar(s, true)}<div><span class="category">${s.category}</span><h1>${escapeHtml(s.nickname)} <em>DEMO</em></h1><p>@${escapeHtml(s.soopId)}</p></div></div><a class="station" href="https://bj.afreecatv.com/${encodeURIComponent(s.soopId)}" target="_blank" rel="noopener noreferrer">SOOP 방송국 바로가기</a></section>
+    <section class="profile-hero"><div class="profile-main">${rankedAvatar(s, info.current)}<div><span class="category">${s.category}</span><h1>${escapeHtml(s.nickname)} <em>DEMO</em></h1><p>@${escapeHtml(s.soopId)}</p></div></div><a class="station" href="https://bj.afreecatv.com/${encodeURIComponent(s.soopId)}" target="_blank" rel="noopener noreferrer">SOOP 방송국 바로가기</a></section>
     <section class="profile-stats" aria-label="스트리머 주요 정보">
       <article><span class="metric-icon purple">◷</span><div><small>총 방송 시간</small><strong>${s.totalBroadcastHours.toLocaleString('ko-KR')}<i>시간</i></strong></div></article>
       <article><span class="metric-icon blue">◉</span><div><small>누적 유저</small><strong>${s.cumulativeUsers.toLocaleString('ko-KR')}<i>명</i></strong></div></article>
@@ -91,7 +93,7 @@ function renderDetail(id) {
       <article class="subscriber-stat"><span class="metric-icon gold">★</span><div><small>구독팬 수</small><strong>${(s.subscribers.basic + s.subscribers.plus).toLocaleString('ko-KR')}<i>명</i></strong><p><b>베이직 ${s.subscribers.basic.toLocaleString('ko-KR')}</b><b>플러스 ${s.subscribers.plus.toLocaleString('ko-KR')}</b></p></div></article>
       <article><span class="metric-icon green">♣</span><div><small>팬클럽 수</small><strong>${s.fanClub.toLocaleString('ko-KR')}<i>명</i></strong></div></article>
     </section>
-    <section class="tier-card" style="--tier:${info.current.color}"><div class="tier-visual">${medal(info.current)}<span>CURRENT EMBLEM</span><strong>${info.current.name}</strong></div><div class="tier-numbers"><div><span>현재 누적 유저</span><strong>${s.cumulativeUsers.toLocaleString('ko-KR')}</strong></div><div><span>다음 목표</span><strong>${info.next ? `${info.next.name} · ${formatCompact(info.next.min)}` : '최고 등급 달성'}</strong></div><div class="detail-progress"><div><span>${info.next ? `${formatCompact(info.remaining)} 남음` : '모든 등급 완료'}</span><strong>${info.progress.toFixed(1)}%</strong></div><div class="progress"><i style="width:${info.progress}%"></i></div></div></div></section>
+    <section class="tier-card" style="--tier:${info.current.color}"><div class="tier-visual">${tierArt(info.current, 'crest')}<span>CURRENT EMBLEM</span><strong>${info.current.name}</strong></div><div class="tier-numbers"><div><span>현재 누적 유저</span><strong>${s.cumulativeUsers.toLocaleString('ko-KR')}</strong></div><div><span>다음 목표</span><strong>${info.next ? `${info.next.name} · ${formatCompact(info.next.min)}` : '최고 등급 달성'}</strong></div><div class="detail-progress"><div><span>${info.next ? `${formatCompact(info.remaining)} 남음` : '모든 등급 완료'}</span><strong>${info.progress.toFixed(1)}%</strong></div><div class="progress"><i style="width:${info.progress}%"></i></div></div></div></section>
     <section class="detail-grid"><article class="panel history"><div class="panel-title"><div><span>GROWTH</span><h2>누적 유저 변화</h2></div><div class="growth-summary"><strong>+${formatCompact(periodGrowth)}<small>선택 기간 증가량</small></strong><div class="period-tabs" role="tablist" aria-label="성장 그래프 기간">${[['daily','일별'],['monthly','월별'],['yearly','연별']].map(([key,label]) => `<a role="tab" aria-selected="${state.period === key}" class="${state.period === key ? 'active' : ''}" href="/streamer/${encodeURIComponent(id)}?period=${key}">${label}</a>`).join('')}</div></div></div>${chart(s)}</article><article class="panel log"><div class="panel-title"><div><span>EMBLEM LOG</span><h2>등급 변경 기록</h2></div></div><div class="timeline"><i></i><div><strong>${info.current.name} 달성</strong><span>현재 누적 유저 기준 자동 계산</span></div></div><div class="timeline muted"><i></i><div><strong>${info.next ? `${info.next.name} 도전 중` : '최고 등급 유지 중'}</strong><span>${info.next ? `${info.progress.toFixed(1)}% 진행` : '프레스티지'}</span></div></div><p>실제 데이터 연동 후 승급 이력이 표시됩니다.</p></article></section>
     <footer><p>본 사이트는 SOOP 공식 서비스가 아닌 팬 제작 정보 사이트입니다.</p><p>현재 데이터는 UI 확인을 위한 샘플입니다.</p></footer></main>`;
   bindHome();
