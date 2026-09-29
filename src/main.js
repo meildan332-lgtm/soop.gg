@@ -1,6 +1,6 @@
 import './styles.css';
 import './emblem-overrides.css';
-import { AUTO_LOAD_TARGET, streamers, categories, lastUpdated, loadStreamers, addStreamer, searchStreamers, hasMoreStreamers, streamersLoading, rankingPopulation } from './data.js';
+import { streamers, categories, lastUpdated, loadStreamers, addStreamer, searchStreamers, hasMoreStreamers, streamersLoading, rankingPopulation } from './data.js';
 import { getTierInfo, formatCompact } from './tiers.js';
 
 const app = document.querySelector('#app');
@@ -49,26 +49,9 @@ const categoryMatchCount = () => streamers.filter(s =>
   !s.searchOnly && (state.category === '전체' || (s.categoryGroup || s.category) === state.category)
 ).length;
 
-let fillToken = 0;
-let filling = false;
-// 첫 100명을 보여준 뒤, 전체 탭은 100명씩 차례로 이어서 불러온다(AUTO_LOAD_TARGET까지).
-async function autoFill() {
-  const token = ++fillToken;
-  filling = true;
-  while (token === fillToken && state.category === '전체' && hasMoreStreamers && categoryMatchCount() < AUTO_LOAD_TARGET) {
-    if (streamersLoading) { await new Promise(r => setTimeout(r, 200)); continue; }
-    try { await loadCategoryBatch(); loadError = ''; } catch (error) { loadError = error.message; break; }
-    if (token === fillToken && !location.pathname.startsWith('/streamer/')) renderList();
-  }
-  if (token === fillToken) {
-    filling = false;
-    if (!location.pathname.startsWith('/streamer/')) renderList();
-  }
-}
-
 async function loadCategoryBatch({ reset = false } = {}) {
   const before = reset ? 0 : categoryMatchCount();
-  const batchSize = state.category === '전체' ? 100 : 30;
+  const batchSize = 100;
   let first = true;
   do {
     await loadStreamers({ reset: reset && first, category: state.category });
@@ -109,9 +92,9 @@ function row(s, index) {
 
 function renderList() {
   const items = getFiltered();
-  app.innerHTML = `${header()}<main>${controls()}<div class="list-head"><div><span class="rank-title-icon">≡</span><strong>${state.category === '전체' ? 'SOOP 스트리머 랭킹' : state.category + ' 스트리머 랭킹'}</strong><span>${items.length}명 불러옴</span></div><div class="list-actions"><select id="tier" aria-label="등급 필터">${['전체 등급','미등급','실버','골드','플래티넘','에메랄드','다이아','프레스티지'].map(v => `<option ${state.tier === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div></div>
+  app.innerHTML = `${header()}<main>${controls()}<div class="list-head"><div><span class="rank-title-icon">≡</span><strong>${state.category === '전체' ? 'SOOP 스트리머 랭킹' : state.category + ' 스트리머 랭킹'}</strong><span>${items.length}명 불러옴</span></div><div class="list-actions"><span>최대 1,000명 · 스크롤할 때마다 100명 추가</span><select id="tier" aria-label="등급 필터">${['전체 등급','미등급','실버','골드','플래티넘','에메랄드','다이아','프레스티지'].map(v => `<option ${state.tier === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div></div>
   <section class="streamer-list">${items.length ? items.map(row).join('') : `<div class="empty"><strong>조건에 맞는 스트리머가 없어요.</strong><span>${hasMoreStreamers ? '다음 스트리머를 불러오는 중입니다.' : '검색어나 필터를 바꿔보세요.'}</span><button id="reset">필터 초기화</button></div>`}</section>
-  ${hasMoreStreamers ? `<div class="load-sentinel" id="load-more"><span class="loader"></span>${streamersLoading ? '불러오는 중…' : `아래로 스크롤하면 ${state.category === '전체' ? 100 : 30}명을 더 불러옵니다`}</div>` : ''}
+  ${hasMoreStreamers ? `<div class="load-sentinel" id="load-more"><span class="loader"></span>${streamersLoading ? '불러오는 중…' : '아래로 스크롤하면 100명을 더 불러옵니다'}</div>` : ''}
   <footer><p>본 사이트는 SOOP 공식 서비스가 아닌 팬 제작 정보 사이트입니다.</p><p>수치는 SOOP 공개 채널 응답에서 불러오며, 플랫폼 반영 시점에 따라 차이가 날 수 있습니다.</p></footer></main>`;
   bindList();
   observeMore();
@@ -120,12 +103,12 @@ function renderList() {
 function observeMore() {
   listObserver?.disconnect();
   const sentinel = document.querySelector('#load-more');
-  if (!sentinel || streamersLoading || filling) return;
+  if (!sentinel || streamersLoading) return;
   listObserver = new IntersectionObserver(async entries => {
     if (!entries[0].isIntersecting || streamersLoading) return;
     listObserver.disconnect();
     sentinel.classList.add('loading');
-    sentinel.innerHTML = `<span class="loader"></span>다음 ${state.category === '전체' ? 100 : 30}명을 불러오는 중…`;
+    sentinel.innerHTML = `<span class="loader"></span>다음 100명을 불러오는 중…`;
     try { await loadCategoryBatch(); loadError = ''; }
     catch (error) { loadError = error.message; }
     renderList();
@@ -133,39 +116,42 @@ function observeMore() {
   listObserver.observe(sentinel);
 }
 
-function chart(s) {
-  const data = s.history[state.period];
-  if (data.length < 2) return `<div class="chart-empty"><strong>성장 기록 수집 전</strong><span>SOOP 공개 응답은 현재 누적값만 제공해요. 이후 저장된 기록부터 변화 그래프가 표시됩니다.</span></div>`;
-  const periodLabel = { daily: '최근 7일', monthly: '최근 7개월', yearly: '최근 5년' }[state.period];
-  const max = Math.max(...data.map(h => h.value));
-  const min = Math.min(...data.map(h => h.value)) * .96;
-  const points = data.map((h,i) => `${(i/(data.length-1))*100},${82-((h.value-min)/(max-min))*62}`).join(' ');
-  return `<div class="chart" aria-label="${periodLabel} 누적 유저 변화"><svg viewBox="0 0 100 90" preserveAspectRatio="none"><defs><linearGradient id="area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s.accent}" stop-opacity=".35"/><stop offset="1" stop-color="${s.accent}" stop-opacity="0"/></linearGradient></defs><polygon points="0,90 ${points} 100,90" fill="url(#area)"/><polyline points="${points}" fill="none" stroke="${s.accent}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg><div>${data.map(h => `<span>${h.label}</span>`).join('')}</div></div>`;
+const formatVodDuration = seconds => {
+  if (!seconds) return '';
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return hours ? `${hours}:${String(minutes).padStart(2, '0')}` : `${minutes}분`;
+};
+
+function vodList(s) {
+  if (!s.vods?.length) return `<div class="vod-empty"><strong>공개된 VOD가 없습니다</strong><span>SOOP에서 공개 다시보기를 찾지 못했습니다.</span></div>`;
+  return `<div class="vod-grid">${s.vods.map(vod => `<a class="vod-card" href="${vod.url}" target="_blank" rel="noopener noreferrer">
+    <span class="vod-thumb">${vod.thumbnail ? `<img src="${escapeHtml(vod.thumbnail)}" alt="" loading="lazy" referrerpolicy="no-referrer"/>` : `<b>VOD</b>`}${vod.duration ? `<em>${formatVodDuration(vod.duration)}</em>` : ''}</span>
+    <strong>${escapeHtml(vod.title)}</strong><span>${vod.date ? new Date(vod.date).toLocaleDateString('ko-KR') : '날짜 미제공'}${vod.views ? ` · ${vod.views.toLocaleString('ko-KR')}회` : ''}</span>
+  </a>`).join('')}</div>`;
 }
 
 function renderDetail(id) {
   const s = streamers.find(x => x.soopId === id);
   if (!s) { renderDetailError(id); return; }
-  const requestedPeriod = new URLSearchParams(location.search).get('period');
-  if (['daily', 'monthly', 'yearly'].includes(requestedPeriod)) state.period = requestedPeriod;
   const info = getTierInfo(s.cumulativeUsers);
-  const periodData = s.history[state.period];
-  const periodGrowth = periodData.length > 1 ? periodData.at(-1).value - periodData[0].value : null;
-  const overallRank = !s.searchOnly && s.officialRank ? s.officialRank : null;
-  const topPercent = overallRank && rankingPopulation ? Math.max(0.01, overallRank / rankingPopulation * 100) : null;
+  const overallRank = (!s.searchOnly && s.officialRank) || null;
+  const rankBase = rankingPopulation;
+  const topPercent = overallRank && rankBase ? Math.max(0.01, overallRank / rankBase * 100) : null;
   const stationUrl = `https://www.sooplive.com/station/${encodeURIComponent(s.soopId)}`;
   const liveUrl = s.broadNo ? `https://play.sooplive.com/${encodeURIComponent(s.soopId)}/${s.broadNo}` : stationUrl;
   const livePanel = s.isLive ? `<a class="live-card" href="${liveUrl}" target="_blank" rel="noopener noreferrer"><span class="live-thumb" style="--accent:${s.accent}"><img src="${escapeHtml(s.liveThumbnail)}" alt="${escapeHtml(s.nickname)} 라이브 방송 썸네일" referrerpolicy="no-referrer"/><b><i></i> ${s.liveViewers.toLocaleString('ko-KR')}</b><strong>${escapeHtml(s.initials)}</strong></span><span class="live-title"><i>LIVE</i><span>${escapeHtml(s.liveTitle || '현재 라이브 방송')}</span></span></a>` : `<a class="station" href="${stationUrl}" target="_blank" rel="noopener noreferrer">SOOP 방송국 바로가기</a>`;
   app.innerHTML = `${header(true)}<main class="detail"><button class="back" data-home>‹ 전체 랭킹으로</button>
     <section class="profile-hero"><div class="profile-main">${rankedAvatar(s, info.current)}<div><span class="category">${s.category}</span><h1>${escapeHtml(s.nickname)} <em>SOOP</em></h1><p>@${escapeHtml(s.soopId)}${overallRank ? `<span class="profile-rank-text">전체 ${overallRank.toLocaleString('ko-KR')}위${topPercent == null ? '' : ` · 상위 ${topPercent < 0.1 ? topPercent.toFixed(2) : topPercent.toFixed(1)}%`}</span>` : ''}</p></div></div>${livePanel}</section>
     <section class="profile-stats" aria-label="스트리머 주요 정보">
-      <article><span class="metric-icon purple">◷</span><div><small>총 방송 시간</small><strong>${s.totalBroadcastHours.toLocaleString('ko-KR')}<i>시간</i></strong></div></article>
-      <article><span class="metric-icon blue">◉</span><div><small>누적 유저</small><strong>${s.cumulativeUsers.toLocaleString('ko-KR')}<i>명</i></strong></div></article>
-      <article><span class="metric-icon favorite" aria-hidden="true">★</span><div><small>애청자 수</small><strong>${s.followers.toLocaleString('ko-KR')}<i>명</i></strong></div></article>
-      <article class="subscriber-stat"><span class="metric-icon subscribe" aria-hidden="true"><i></i></span><div><small>구독팬 수</small><strong>${(s.subscribers.basic + s.subscribers.plus).toLocaleString('ko-KR')}<i>명</i></strong><p><b>베이직 ${s.subscribers.basic.toLocaleString('ko-KR')}</b><b>플러스 ${s.subscribers.plus.toLocaleString('ko-KR')}</b></p></div></article>
+      <article><div><small>총 방송 시간</small><strong>${s.totalBroadcastHours.toLocaleString('ko-KR')}<i>시간</i></strong></div></article>
+      <article><div><small>누적 유저</small><strong>${s.cumulativeUsers.toLocaleString('ko-KR')}<i>명</i></strong></div></article>
+      <article><div><small>애청자 수</small><strong>${s.followers.toLocaleString('ko-KR')}<i>명</i></strong></div></article>
+      <article class="subscriber-stat"><div><small>구독팬 수</small><strong>${(s.subscribers.basic + s.subscribers.plus).toLocaleString('ko-KR')}<i>명</i></strong><p><b>베이직 ${s.subscribers.basic.toLocaleString('ko-KR')}</b><b>플러스 ${s.subscribers.plus.toLocaleString('ko-KR')}</b></p></div></article>
     </section>
     <section class="tier-card" style="--tier:${info.current.color}"><div class="tier-visual">${rankCrest(info.current)}<strong>${info.current.name}</strong></div><div class="tier-numbers"><div><span>현재 누적 유저</span><strong>${s.cumulativeUsers.toLocaleString('ko-KR')}</strong></div><div><span>다음 목표</span><strong>${info.next ? `${info.next.name} · ${formatCompact(info.next.min)}` : '최고 등급 달성'}</strong></div><div class="detail-progress"><div><span>${info.next ? `${formatCompact(info.remaining)} 남음` : '모든 등급 완료'}</span><strong>${info.progress.toFixed(1)}%</strong></div><div class="progress"><i style="width:${info.progress}%"></i></div></div></div></section>
-    <section class="detail-grid"><article class="panel history"><div class="panel-title"><div><span>GROWTH</span><h2>누적 유저 변화</h2></div><div class="growth-summary">${periodGrowth == null ? '' : `<strong>+${formatCompact(periodGrowth)}<small>선택 기간 증가량</small></strong>`}<div class="period-tabs" role="tablist" aria-label="성장 그래프 기간">${[['daily','일별'],['monthly','월별'],['yearly','연별']].map(([key,label]) => `<a role="tab" aria-selected="${state.period === key}" class="${state.period === key ? 'active' : ''}" href="/streamer/${encodeURIComponent(id)}?period=${key}">${label}</a>`).join('')}</div></div></div>${chart(s)}</article><article class="panel log"><div class="panel-title"><div><span>EMBLEM LOG</span><h2>등급 변경 기록</h2></div></div><div class="timeline"><i></i><div><strong>${info.current.name}</strong><span>현재 SOOP 누적 조회수 기준 자동 계산</span></div></div><div class="timeline muted"><i></i><div><strong>${info.next ? `${info.next.name} 도전 중` : '최고 등급 유지 중'}</strong><span>${info.next ? `${info.progress.toFixed(1)}% 진행` : '프레스티지'}</span></div></div><p>등급 변경 기록은 실제 데이터가 축적된 이후 표시됩니다.</p></article></section>
+    <section class="tier-history panel"><div class="panel-title"><div><span>TIER HISTORY</span><h2>티어 변경 날짜</h2></div></div><div class="tier-date-row"><i style="--tier:${info.current.color}"></i><div><strong>${info.current.name}</strong><span>${new Date(s.lastUpdated).toLocaleDateString('ko-KR')} 확인</span></div></div><p>이후 티어가 변경되면 변경된 날짜가 순서대로 기록됩니다.</p></section>
+    <section class="vod-section panel"><div class="panel-title"><div><span>RECENT VOD</span><h2>최근 VOD</h2></div><strong>${s.vods?.length || 0}개</strong></div>${vodList(s)}</section>
     <footer><p>본 사이트는 SOOP 공식 서비스가 아닌 팬 제작 정보 사이트입니다.</p><p>${escapeHtml(s.dataSource)} · ${new Date(s.lastUpdated).toLocaleString('ko-KR')} 기준</p></footer></main>`;
   bindHome();
   bindDetailSearch();
@@ -184,10 +170,8 @@ async function openCategory(category) {
   state.sort = '누적 유저 많은 순';
   history.pushState({}, '', '/');
   app.innerHTML = `<main class="loading-state"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/><strong>SOOP에서 데이터를 불러오고 있습니다</strong></main>`;
-  fillToken++; filling = false;
   try { await loadCategoryBatch({ reset: true }); loadError = ''; } catch (error) { loadError = error.message; }
   renderList();
-  autoFill();
 }
 function bindHome() {
   document.querySelectorAll('[data-home]').forEach(el => el.onclick = () => { Object.assign(state, { category: '전체', imminent: false, sort: '누적 유저 많은 순', view: 'ranking' }); history.pushState({}, '', '/'); renderList(); });
@@ -284,4 +268,4 @@ async function route() {
 }
 
 app.innerHTML = `<main class="loading-state"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/><strong>SOOP에서 데이터를 불러오고 있습니다</strong></main>`;
-loadStreamers().then(() => { route(); autoFill(); }).catch(error => { loadError = error.message; renderList(); });
+loadStreamers().then(route).catch(error => { loadError = error.message; renderList(); });

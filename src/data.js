@@ -1,4 +1,5 @@
 const SOOP_API = 'https://chapi.sooplive.com/api';
+const MAX_STREAMERS = 1000;
 
 const rankedIds = `devil0108 lshooooo bigbigjo2 khm11903 rlaeogus200 120510 kissday621 rrvv17 wnnw no3miggi qpwo164 sccha21 horusb zpdl1313 ch1716 jdm1197 dlgksquf159 guslgood2 seokwngud galsa skswhdkgo janjju phonics1 killgusdnk nila25 spbabobj goata111789 yunheehoho leesh2148 zkwks4413 rlaxordyd yuambo bebe010 ecvhao pig2704 joey1114 dkssyddleid aay2014 dpfgc3 eunz1nara sol3712 kimdhun b13246 isauria pi0314 since821 feel0100 gusdk2362 djsrhkwl dlghfjs gyeonjahee partypeople sang033 lyj9306 parang58 m0m099 beatjungle1 unitelshaki rlrlvkvk123 030b1004 skswldms kdb1223 zzzz4422 ansguswns519 lyl9095 thseogks1 jaedong23 1004suna vlfrl2 pookygamja e000e77 wannabe33 moonwol0614 asy1218 gosegu2 eunyoung1238 kogo0512 ehdgkr6283 horidda ksh14 lovely5959 axiaxi umj4635 sky2713 giltae1124 nada11200 sas2055 townboy gtv7 lilpa0309 rkdakstlr911 arinbbidol dmsco39 ayoona jingburger1 golaniyule0 ghth6009 viichan6 jeehyeoun cotton1217`.split(' ');
 const accents = ['#7464ff', '#3e8cff', '#2dd4bf', '#ff9d43', '#a855f7', '#f05d8f', '#fb7185', '#4bd6a5'];
@@ -55,7 +56,26 @@ function primaryCategory(vods) {
   return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
 }
 
-function mapStation(data, seed, detectedCategory = '') {
+function mapVods(vods) {
+  return (vods?.data || []).map((item) => {
+    const ucc = item?.ucc || item || {};
+    const vodId = ucc.title_no || ucc.ucc_no || ucc.vod_no || item.title_no || item.ucc_no;
+    const thumbnail = absoluteImage(
+      ucc.thumb || ucc.thumbnail || ucc.thumbnail_url || item.thumb || item.thumbnail || ''
+    );
+    return {
+      id: String(vodId || ''),
+      title: cleanText(ucc.title || ucc.subject || item.title || '다시보기'),
+      thumbnail,
+      date: ucc.reg_date || ucc.created_at || item.reg_date || item.created_at || '',
+      views: Number(ucc.view_cnt || ucc.read_cnt || item.view_cnt || item.read_cnt) || 0,
+      duration: Number(ucc.total_file_duration || ucc.duration || item.duration) || 0,
+      url: vodId ? `https://vod.sooplive.com/player/${encodeURIComponent(vodId)}` : ''
+    };
+  }).filter(vod => vod.id || vod.url);
+}
+
+function mapStation(data, seed, detectedCategory = '', vods = []) {
   const station = data.station;
   if (!station?.upd) throw new Error('채널 정보를 찾을 수 없습니다.');
   const nickname = cleanText(station.user_nick || station.station_name || seed.soopId);
@@ -81,6 +101,7 @@ function mapStation(data, seed, detectedCategory = '') {
     followers: Number(station.upd.fan_cnt) || 0,
     subscribers: { basic: Number(data.subscription?.tier1) || 0, plus: Number(data.subscription?.tier2) || 0 },
     fanClub: null,
+    vods: mapVods(vods),
     history: { daily: [point], monthly: [point], yearly: [point] },
     stationTitle: cleanText(station.station_title || ''),
     dataSource: 'SOOP 공개 채널 API'
@@ -96,7 +117,6 @@ const streamerCache = new Map();
 let directoryPage = 0;
 let activeDirectoryCategory = 'all';
 let activePageSize = 100;
-export const AUTO_LOAD_TARGET = 500; // 전체 탭은 100명씩 이 인원까지 자동으로 이어서 불러온다
 
 const directoryCategory = {
   '전체': 'all', '게임': 'game', '버추얼': 'all', '보이는 라디오': 'talkcam',
@@ -124,7 +144,7 @@ export async function fetchStreamer(soopId, overrides = {}) {
     stationResponse.json(),
     vodResponse?.ok ? vodResponse.json().catch(() => null) : null
   ]);
-  const streamer = mapStation(stationData, { soopId: id, category: '기타', accent: '#7968ff', ...overrides }, primaryCategory(vodData));
+  const streamer = mapStation(stationData, { soopId: id, category: '기타', accent: '#7968ff', ...overrides }, primaryCategory(vodData), vodData);
   streamerCache.set(id.toLowerCase(), streamer);
   return streamer;
 }
@@ -148,7 +168,7 @@ export async function loadStreamers({ reset = true, category = '전체' } = {}) 
   if (streamersLoading) return streamers;
   streamersLoading = true;
   const requestedCategory = directoryCategory[category] || 'all';
-  const requestedPageSize = category === '전체' ? 100 : 30;
+  const requestedPageSize = 100;
   if (reset || requestedCategory !== activeDirectoryCategory) {
     streamers = [];
     directoryPage = 0;
@@ -187,7 +207,7 @@ export async function loadStreamers({ reset = true, category = '전체' } = {}) 
   const loadedIds = new Set(loaded.map(item => item.soopId.toLowerCase()));
   streamers = [...streamers.filter(item => !(item.searchOnly && loadedIds.has(item.soopId.toLowerCase()))), ...loaded];
   directoryPage = nextPage;
-  hasMoreStreamers = nextPage < directory.totalPages && directory.ids.length > 0;
+  hasMoreStreamers = streamers.filter(item => !item.searchOnly).length < MAX_STREAMERS && nextPage < directory.totalPages && directory.ids.length > 0;
   streamersLoading = false;
   lastUpdated = new Date();
   if (!streamers.length) throw new Error('SOOP 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
