@@ -8,9 +8,9 @@ const state = { query: '', category: '전체', tier: '전체 등급', sort: '누
 
 const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
 const medal = (tier) => {
-  const rank = tier.name.match(/[123]$/)?.[0] ?? (tier.group === '프레스티지' ? '★' : '');
+  const rank = tier.name.match(/[123]$/)?.[0] ?? '';
   const emblemClass = { 미등급: 'unranked', 실버: 'silver', 골드: 'gold', 플래티넘: 'platinum', 에메랄드: 'emerald', 다이아: 'diamond', 프레스티지: 'prestige' }[tier.group];
-  return `<span class="emblem emblem-${emblemClass}" style="--tier:${tier.color}" aria-hidden="true"><i></i><b>${rank}</b></span>`;
+  return `<span class="emblem emblem-${emblemClass}" style="--tier:${tier.color}" aria-hidden="true"><img src="/emblems/${emblemClass}.png" alt=""/><b>${rank}</b></span>`;
 };
 const avatar = (s, large = false) => `<span class="avatar ${large ? 'avatar-large' : ''}" style="--accent:${s.accent}">${escapeHtml(s.initials)}</span>`;
 
