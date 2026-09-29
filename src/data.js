@@ -95,7 +95,7 @@ let directoryPage = 0;
 let activeDirectoryCategory = 'all';
 
 const directoryCategory = {
-  '전체': 'all', '게임': 'game', '버추얼': 'virtual', '보이는 라디오': 'talkcam',
+  '전체': 'all', '게임': 'game', '버추얼': 'all', '보이는 라디오': 'talkcam',
   '스포츠': 'sports_general', '먹방/쿡방': 'mukbang', '음악': 'music',
   '여행': 'travel', '교육/정보': 'study', '기타': 'all'
 };
@@ -148,8 +148,8 @@ export async function loadStreamers({ reset = true, category = '전체' } = {}) 
   }
   const known = new Set(streamers.map(item => item.soopId));
   const seeds = directory.ids.filter(id => !known.has(id)).map((soopId, index) => ({
-    soopId, category: category === '전체' ? '기타' : category,
-    categoryGroup: category === '전체' ? '기타' : category,
+    soopId, category: activeDirectoryCategory === 'all' ? '기타' : category,
+    categoryGroup: activeDirectoryCategory === 'all' ? '기타' : category,
     accent: accents[(streamers.length + index) % accents.length],
     officialRank: streamers.length + index + 1
   }));

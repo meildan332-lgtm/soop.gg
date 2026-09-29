@@ -1,4 +1,4 @@
-const CATEGORY_TYPES = new Set(['all', 'game', 'virtual', 'talkcam', 'sports_general', 'mukbang', 'music', 'travel', 'study']);
+const CATEGORY_TYPES = new Set(['all', 'game', 'talkcam', 'sports_general', 'mukbang', 'music', 'travel', 'study']);
 
 export default async function handler(req, res) {
   const page = Math.max(1, Number(req.query.page) || 1);
