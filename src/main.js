@@ -45,18 +45,8 @@ function getFiltered() {
   });
 }
 
-const categoryMatchCount = () => streamers.filter(s =>
-  !s.searchOnly && (state.category === '전체' || (s.categoryGroup || s.category) === state.category)
-).length;
-
 async function loadCategoryBatch({ reset = false } = {}) {
-  const before = reset ? 0 : categoryMatchCount();
-  const batchSize = 100;
-  let first = true;
-  do {
-    await loadStreamers({ reset: reset && first, category: state.category });
-    first = false;
-  } while (hasMoreStreamers && categoryMatchCount() - before < batchSize);
+  await loadStreamers({ reset, category: '전체' });
 }
 
 function header(withSearch = false) {
@@ -218,8 +208,6 @@ async function openCategory(category) {
   state.imminent = false;
   state.sort = '누적 유저 많은 순';
   history.pushState({}, '', '/');
-  app.innerHTML = `<main class="loading-state"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/><strong>SOOP에서 데이터를 불러오고 있습니다</strong></main>`;
-  try { await loadCategoryBatch({ reset: true }); loadError = ''; } catch (error) { loadError = error.message; }
   renderList();
 }
 function bindHome() {

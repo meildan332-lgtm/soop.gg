@@ -31,7 +31,7 @@ const categoryTranslations = {
   'Travel': '여행'
 };
 
-const gameKeywords = /게임|리그 오브 레전드|메이플|서든|스타크래프트|배틀그라운드|오버워치|발로란트|마인크래프트|FC ONLINE|로스트아크|던전|Raven|TFT|전략적 팀 전투/i;
+const gameKeywords = /게임|\bGames?\b|리그 오브 레전드|메이플|서든|스타크래프트|배틀그라운드|오버워치|발로란트|마인크래프트|FC ONLINE|로스트아크|던전|Raven|TFT|전략적 팀 전투/i;
 
 function categoryGroup(category) {
   if (!category) return '기타';
@@ -91,11 +91,12 @@ function mapStationStatus(status, seed, detectedCategory = '') {
   const point = { label: '현재', value: cumulativeUsers };
   const profilePrefix = encodeURIComponent(seed.soopId.slice(0, 2));
   const profileId = encodeURIComponent(seed.soopId);
+  const normalizedCategory = categoryGroup(detectedCategory || seed.category);
 
   return {
     ...seed,
-    category: detectedCategory || seed.category || '기타',
-    categoryGroup: seed.categoryGroup && seed.categoryGroup !== '기타' ? seed.categoryGroup : categoryGroup(detectedCategory || seed.category),
+    category: normalizedCategory,
+    categoryGroup: normalizedCategory,
     nickname,
     initials: nickname.replace(/[^0-9A-Za-z가-힣]/g, '').slice(0, 2) || seed.soopId.slice(0, 2),
     profileImage: `https://profile.img.sooplive.co.kr/LOGO/${profilePrefix}/${profileId}/${profileId}.jpg`,
