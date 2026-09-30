@@ -118,6 +118,38 @@ function mapStation(data, seed, detectedCategory = '', vods = []) {
   };
 }
 
+function mapStationStatus(status, seed) {
+  const nickname = cleanText(status.user_nick || status.station_name || seed.soopId);
+  const cumulativeUsers = Number(status.total_view_cnt) || 0;
+  const point = { label: '현재', value: cumulativeUsers };
+  const profilePrefix = encodeURIComponent(seed.soopId.slice(0, 2));
+  const profileId = encodeURIComponent(seed.soopId);
+
+  return {
+    ...seed,
+    nickname,
+    initials: nickname.replace(/[^0-9A-Za-z가-힣]/g, '').slice(0, 2) || seed.soopId.slice(0, 2),
+    profileImage: `https://profile.img.sooplive.co.kr/LOGO/${profilePrefix}/${profileId}/${profileId}.jpg`,
+    cumulativeUsers,
+    delta: 0,
+    isLive: Boolean(status.broad_no),
+    liveViewers: 0,
+    liveTitle: '',
+    broadNo: status.broad_no || null,
+    liveThumbnail: status.broad_no ? `https://liveimg.sooplive.com/m/${status.broad_no}.jpg` : '',
+    lastUpdated: new Date().toISOString(),
+    totalBroadcastHours: Math.round((Number(status.total_broad_time) || 0) / 3600),
+    followers: Number(status.fan_cnt) || 0,
+    subscribers: { basic: Number(status.total_sub_cnt) || 0, plus: 0 },
+    fanClub: null,
+    vods: [],
+    vodMeta: { currentPage: 1, lastPage: 1, total: 0 },
+    history: { daily: [point], monthly: [point], yearly: [point] },
+    stationTitle: cleanText(status.station_title || ''),
+    dataSource: 'SOOP 공개 채널 상태 API'
+  };
+}
+
 export let streamers = [];
 export let lastUpdated = null;
 export let hasMoreStreamers = true;
@@ -221,17 +253,28 @@ export async function loadStreamers({ reset = true, category = '전체' } = {}) 
     accent: accents[(streamers.length + index) % accents.length],
     officialRank: streamers.length + index + 1
   }));
-  let cursor = 0;
-  async function worker() {
-    while (cursor < seeds.length) {
-      const seed = seeds[cursor++];
-      try { loaded.push(await fetchStreamer(seed.soopId, seed)); } catch { /* unavailable channels are skipped */ }
+  const statusById = new Map((directory.streamers || []).map(item => [String(item.user_id).toLowerCase(), item]));
+  if (statusById.size) {
+    for (const seed of seeds) {
+      const status = statusById.get(seed.soopId.toLowerCase());
+      if (!status) continue;
+      const streamer = mapStationStatus(status, seed);
+      streamerCache.set(seed.soopId.toLowerCase(), streamer);
+      loaded.push(streamer);
     }
+  } else {
+    let cursor = 0;
+    async function worker() {
+      while (cursor < seeds.length) {
+        const seed = seeds[cursor++];
+        try { loaded.push(await fetchStreamer(seed.soopId, seed)); } catch { /* unavailable channels are skipped */ }
+      }
+    }
+    await Promise.all(Array.from({ length: 10 }, worker));
   }
-  await Promise.all(Array.from({ length: 10 }, worker));
   loaded.sort((a, b) => a.officialRank - b.officialRank);
   const loadedIds = new Set(loaded.map(item => item.soopId.toLowerCase()));
-  streamers = [...streamers.filter(item => !(item.searchOnly && loadedIds.has(item.soopId.toLowerCase()))), ...loaded];
+  streamers = [...streamers.filter(item => !(item.searchOnly && loadedIds.has(item.soopId.toLowerCase()))), ...loaded].slice(0, MAX_STREAMERS);
   directoryPage = nextPage;
   const loadedCount = streamers.filter(item => !item.searchOnly).length;
   const availablePages = Number(directory.totalPages) || Math.ceil((Number(directory.totalCount) || MAX_STREAMERS) / activePageSize);

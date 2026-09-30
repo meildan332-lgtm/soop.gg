@@ -1,4 +1,20 @@
 const CATEGORY_TYPES = new Set(['all', 'game', 'talkcam', 'sports_general', 'mukbang', 'music', 'travel', 'study']);
+const STATION_STATUS_API = 'https://st.sooplive.com/api/get_station_status.php';
+
+async function fetchStationStatus(item) {
+  try {
+    const response = await fetch(`${STATION_STATUS_API}?szBjId=${encodeURIComponent(item.user_id)}`, {
+      headers: { Accept: 'application/json', 'User-Agent': 'SOOP.GG fan ranking' },
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    if (Number(payload.RESULT) !== 1 || !payload.DATA) return null;
+    return { ...payload.DATA, broad_no: item.broad_no || null };
+  } catch {
+    return null;
+  }
+}
 
 export default async function handler(req, res) {
   const page = Math.max(1, Number(req.query.page) || 1);
@@ -17,12 +33,16 @@ export default async function handler(req, res) {
     if (!response.ok) throw new Error(`SOOP ${response.status}`);
     const payload = await response.json();
     const result = payload.RESULT || {};
-    let ids = (result.DATA || []).map(item => item.user_id).filter(Boolean);
+    const directoryItems = (result.DATA || []).filter(item => item.user_id);
+    let ids = directoryItems.map(item => item.user_id);
     // SOOP 목록은 장기 미방송 채널을 제외하지만 채널 공개 API에는 유효한 데이터가 남아 있다.
     if (category === 'all' && page === 1) ids = ['y1026', ...ids.filter(id => id !== 'y1026')].slice(0, pageSize);
+    const itemById = new Map(directoryItems.map(item => [item.user_id, item]));
+    const streamers = (await Promise.all(ids.map(id => fetchStationStatus(itemById.get(id) || { user_id: id })))).filter(Boolean);
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
     res.status(200).json({
       ids,
+      streamers,
       page,
       totalPages: Number(result.TOTAL_PAGE) || page,
       totalCount: Number(result.TOTAL_CNT) || 0
