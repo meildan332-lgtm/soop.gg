@@ -8,6 +8,7 @@ const state = { query: '', category: '전체', tier: '전체 등급', sort: '누
 let loadError = '';
 let searchBusy = false;
 let backgroundLoading = false;
+let tierGuideOpen = false;
 let draftQuery = '';
 let searchTimer;
 const streamerAliases = new Map([
@@ -80,15 +81,24 @@ function row(s, index) {
   </article>`;
 }
 
+function tierGuideModal() {
+  return `<div class="tier-guide-modal" id="tier-guide-modal" ${tierGuideOpen ? '' : 'hidden'} role="dialog" aria-modal="true" aria-labelledby="tier-guide-title">
+    <div class="tier-guide-dialog">
+      <div class="tier-guide-header"><strong id="tier-guide-title">등급 및 도달 기준</strong><button type="button" id="tier-guide-close" aria-label="등급표 닫기">×</button></div>
+      <img src="/brand/tier-guide.png" alt="누적 유저 수에 따른 실버, 골드, 플래티넘, 에메랄드, 다이아, 프레스티지 등급 도달 기준표"/>
+    </div>
+  </div>`;
+}
+
 function renderList() {
   const searchWasFocused = document.activeElement?.id === 'search';
   const selectionStart = searchWasFocused ? document.activeElement.selectionStart : null;
   const selectionEnd = searchWasFocused ? document.activeElement.selectionEnd : null;
   const items = getFiltered();
-  app.innerHTML = `${header()}<main>${controls()}<div class="list-head"><div><span class="rank-title-icon">≡</span><strong>${state.category === '전체' ? 'SOOP 스트리머 랭킹' : state.category + ' 스트리머 랭킹'}</strong><span>${items.length}명 불러옴</span></div><div class="list-actions"><select id="tier" aria-label="등급 필터">${['전체 등급','미등급','실버','골드','플래티넘','에메랄드','다이아','프레스티지'].map(v => `<option ${state.tier === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div></div>
+  app.innerHTML = `${header()}<main>${controls()}<div class="list-head"><div><button type="button" class="tier-guide-button" id="tier-guide-open" aria-label="등급 및 도달 기준 보기" aria-haspopup="dialog">i</button><strong>${state.category === '전체' ? 'SOOP 스트리머 랭킹' : state.category + ' 스트리머 랭킹'}</strong><span>${items.length}명 불러옴</span></div><div class="list-actions"><select id="tier" aria-label="등급 필터">${['전체 등급','미등급','실버','골드','플래티넘','에메랄드','다이아','프레스티지'].map(v => `<option ${state.tier === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div></div>
   <section class="streamer-list">${items.length ? items.map(row).join('') : `<div class="empty"><strong>조건에 맞는 스트리머가 없어요.</strong><span>${hasMoreStreamers ? '다음 스트리머를 불러오는 중입니다.' : '검색어나 필터를 바꿔보세요.'}</span><button id="reset">필터 초기화</button></div>`}</section>
   ${hasMoreStreamers ? `<div class="load-sentinel" id="load-more" aria-live="polite"><span class="loader"></span>다음 100명을 자동으로 불러오는 중…</div>` : `<div class="load-limit">최대 1,000명까지 모두 불러왔습니다.</div>`}
-  <footer><p>본 사이트는 SOOP 공식 서비스가 아닌 팬 제작 정보 사이트입니다.</p><p>수치는 SOOP 공개 채널 응답에서 불러오며, 플랫폼 반영 시점에 따라 차이가 날 수 있습니다.</p></footer></main>`;
+  <footer><p>본 사이트는 SOOP 공식 서비스가 아닌 팬 제작 정보 사이트입니다.</p><p>수치는 SOOP 공개 채널 응답에서 불러오며, 플랫폼 반영 시점에 따라 차이가 날 수 있습니다.</p></footer></main>${tierGuideModal()}`;
   bindList();
   if (searchWasFocused) {
     const search = document.querySelector('#search');
@@ -236,6 +246,19 @@ function bindDetailSearch() {
 }
 function bindList() {
   bindHome();
+  const guideModal = document.querySelector('#tier-guide-modal');
+  const closeTierGuide = () => {
+    tierGuideOpen = false;
+    if (guideModal) guideModal.hidden = true;
+    document.querySelector('#tier-guide-open')?.focus({ preventScroll: true });
+  };
+  document.querySelector('#tier-guide-open')?.addEventListener('click', () => {
+    tierGuideOpen = true;
+    if (guideModal) guideModal.hidden = false;
+    document.querySelector('#tier-guide-close')?.focus({ preventScroll: true });
+  });
+  document.querySelector('#tier-guide-close')?.addEventListener('click', closeTierGuide);
+  guideModal?.addEventListener('click', event => { if (event.target === guideModal) closeTierGuide(); });
   const search = document.querySelector('#search');
   const suggestions = document.querySelector('#search-suggestions');
   const showSuggestions = () => {
@@ -293,7 +316,15 @@ function bindList() {
 }
 
 window.addEventListener('popstate', route);
-window.addEventListener('keydown', e => { if (e.key === '/' && !['INPUT','SELECT'].includes(document.activeElement.tagName)) { e.preventDefault(); document.querySelector('#search')?.focus(); } });
+window.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && tierGuideOpen) {
+    tierGuideOpen = false;
+    const modal = document.querySelector('#tier-guide-modal');
+    if (modal) modal.hidden = true;
+    document.querySelector('#tier-guide-open')?.focus({ preventScroll: true });
+  }
+  if (e.key === '/' && !['INPUT','SELECT'].includes(document.activeElement.tagName)) { e.preventDefault(); document.querySelector('#search')?.focus(); }
+});
 async function route() {
   const match = location.pathname.match(/^\/streamer\/([^/]+)/);
   if (match) {
