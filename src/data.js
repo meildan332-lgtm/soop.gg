@@ -1,4 +1,4 @@
-const MAX_STREAMERS = 1000;
+const AUTOLOAD_MIN_FOLLOWERS = 3000;
 
 const rankedIds = `devil0108 lshooooo bigbigjo2 khm11903 rlaeogus200 120510 kissday621 rrvv17 wnnw no3miggi qpwo164 sccha21 horusb zpdl1313 ch1716 jdm1197 dlgksquf159 guslgood2 seokwngud galsa skswhdkgo janjju phonics1 killgusdnk nila25 spbabobj goata111789 yunheehoho leesh2148 zkwks4413 rlaxordyd yuambo bebe010 ecvhao pig2704 joey1114 dkssyddleid aay2014 dpfgc3 eunz1nara sol3712 kimdhun b13246 isauria pi0314 since821 feel0100 gusdk2362 djsrhkwl dlghfjs gyeonjahee partypeople sang033 lyj9306 parang58 m0m099 beatjungle1 unitelshaki rlrlvkvk123 030b1004 skswldms kdb1223 zzzz4422 ansguswns519 lyl9095 thseogks1 jaedong23 1004suna vlfrl2 pookygamja e000e77 wannabe33 moonwol0614 asy1218 gosegu2 eunyoung1238 kogo0512 ehdgkr6283 horidda ksh14 lovely5959 axiaxi umj4635 sky2713 giltae1124 nada11200 sas2055 townboy gtv7 lilpa0309 rkdakstlr911 arinbbidol dmsco39 ayoona jingburger1 golaniyule0 ghth6009 viichan6 jeehyeoun cotton1217`.split(' ');
 const accents = ['#7464ff', '#3e8cff', '#2dd4bf', '#ff9d43', '#a855f7', '#f05d8f', '#fb7185', '#4bd6a5'];
@@ -124,6 +124,7 @@ function mapStationStatus(status, seed, detectedCategory = '') {
 export let streamers = [];
 export let lastUpdated = null;
 export let hasMoreStreamers = true;
+export let autoLoadStreamers = true;
 export let streamersLoading = false;
 export let rankingPopulation = 0;
 const streamerCache = new Map();
@@ -208,6 +209,7 @@ async function performLoadStreamers({ reset = true, category = '전체' } = {}) 
     streamers = [];
     directoryPage = 0;
     hasMoreStreamers = true;
+    autoLoadStreamers = true;
     activeDirectoryCategory = requestedCategory;
     activePageSize = requestedPageSize;
   }
@@ -252,11 +254,11 @@ async function performLoadStreamers({ reset = true, category = '전체' } = {}) 
   }
   loaded.sort((a, b) => a.officialRank - b.officialRank);
   const loadedIds = new Set(loaded.map(item => item.soopId.toLowerCase()));
-  streamers = [...streamers.filter(item => !(item.searchOnly && loadedIds.has(item.soopId.toLowerCase()))), ...loaded].slice(0, MAX_STREAMERS);
+  streamers = [...streamers.filter(item => !(item.searchOnly && loadedIds.has(item.soopId.toLowerCase()))), ...loaded];
   directoryPage = nextPage;
-  const loadedCount = streamers.filter(item => !item.searchOnly).length;
-  const availablePages = Number(directory.totalPages) || Math.ceil((Number(directory.totalCount) || MAX_STREAMERS) / activePageSize);
-  hasMoreStreamers = loadedCount < MAX_STREAMERS && nextPage < availablePages && directory.ids.length > 0;
+  const availablePages = Number(directory.totalPages) || Math.ceil((Number(directory.totalCount) || 0) / activePageSize);
+  hasMoreStreamers = nextPage < availablePages && directory.ids.length > 0;
+  if (loaded.some(item => item.followers < AUTOLOAD_MIN_FOLLOWERS)) autoLoadStreamers = false;
   streamersLoading = false;
   lastUpdated = new Date();
   if (!streamers.length) throw new Error('SOOP 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');

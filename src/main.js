@@ -1,6 +1,6 @@
 import './styles.css';
 import './emblem-overrides.css';
-import { streamers, categories, loadStreamers, addStreamer, searchStreamers, loadStreamerVods, hasMoreStreamers, rankingPopulation } from './data.js';
+import { streamers, categories, loadStreamers, addStreamer, searchStreamers, loadStreamerVods, hasMoreStreamers, autoLoadStreamers, rankingPopulation } from './data.js';
 import { getTierInfo, formatCompact } from './tiers.js';
 
 const app = document.querySelector('#app');
@@ -8,6 +8,7 @@ const state = { query: '', category: '전체', tier: '전체 등급', sort: '누
 let loadError = '';
 let searchBusy = false;
 let backgroundLoading = false;
+let listObserver;
 let tierGuideOpen = false;
 let draftQuery = '';
 let searchTimer;
@@ -102,7 +103,7 @@ function renderList() {
   const items = getFiltered();
   app.innerHTML = `${header()}<main>${controls()}<div class="list-head"><div><button type="button" class="tier-guide-button" id="tier-guide-open" aria-label="등급 및 도달 기준 보기" aria-haspopup="dialog">i</button><strong>${state.category === '전체' ? 'SOOP 스트리머 랭킹' : state.category + ' 스트리머 랭킹'}</strong><span>${items.length}명 불러옴</span></div><div class="list-actions"><select id="tier" aria-label="등급 필터">${['전체 등급','미등급','실버','골드','플래티넘','에메랄드','다이아','프레스티지'].map(v => `<option ${state.tier === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div></div>
   <section class="streamer-list">${items.length ? items.map(row).join('') : `<div class="empty"><strong>조건에 맞는 스트리머가 없어요.</strong><span>${hasMoreStreamers ? '다음 스트리머를 불러오는 중입니다.' : '검색어나 필터를 바꿔보세요.'}</span><button id="reset">필터 초기화</button></div>`}</section>
-  ${hasMoreStreamers ? `<div class="load-sentinel" id="load-more" aria-live="polite"><span class="loader"></span>다음 100명을 자동으로 불러오는 중…</div>` : `<div class="load-limit">최대 1,000명까지 모두 불러왔습니다.</div>`}
+  ${hasMoreStreamers ? `<div class="load-sentinel" id="load-more" aria-live="polite"><span class="loader"></span>${autoLoadStreamers ? '애청자 3,000명 기준까지 자동으로 불러오는 중…' : '아래로 스크롤하면 다음 100명을 불러옵니다.'}</div>` : `<div class="load-limit">모든 스트리머를 불러왔습니다.</div>`}
   <footer><p>본 사이트는 SOOP 공식 서비스가 아닌 팬 제작 정보 사이트입니다.</p><p>수치는 SOOP 공개 채널 응답에서 불러오며, 플랫폼 반영 시점에 따라 차이가 날 수 있습니다.</p></footer></main>${tierGuideModal()}`;
   bindList();
   if (searchWasFocused) {
@@ -111,15 +112,16 @@ function renderList() {
     if (selectionStart != null && selectionEnd != null) search?.setSelectionRange(selectionStart, selectionEnd);
   }
   continueLoadingInBackground();
+  observeMore();
 }
 
 function continueLoadingInBackground() {
-  if (backgroundLoading || !hasMoreStreamers || location.pathname !== '/') return;
+  if (backgroundLoading || !hasMoreStreamers || !autoLoadStreamers || location.pathname !== '/') return;
   const category = state.category;
   backgroundLoading = true;
   setTimeout(async () => {
     try {
-      while (hasMoreStreamers && location.pathname === '/' && state.category === category) {
+      while (hasMoreStreamers && autoLoadStreamers && location.pathname === '/' && state.category === category) {
         await loadCategoryBatch();
         if (location.pathname !== '/' || state.category !== category) break;
         loadError = '';
@@ -131,9 +133,28 @@ function continueLoadingInBackground() {
       renderList();
     } finally {
       backgroundLoading = false;
-      if (hasMoreStreamers && location.pathname === '/') continueLoadingInBackground();
+      if (hasMoreStreamers && autoLoadStreamers && location.pathname === '/') continueLoadingInBackground();
+      else observeMore();
     }
   }, 0);
+}
+
+function observeMore() {
+  listObserver?.disconnect();
+  if (!hasMoreStreamers || autoLoadStreamers || backgroundLoading || location.pathname !== '/') return;
+  const sentinel = document.querySelector('#load-more');
+  if (!sentinel) return;
+  let loading = false;
+  listObserver = new IntersectionObserver(async entries => {
+    if (!entries[0].isIntersecting || loading) return;
+    loading = true;
+    listObserver?.disconnect();
+    sentinel.innerHTML = '<span class="loader"></span>다음 100명을 불러오는 중…';
+    try { await loadCategoryBatch(); loadError = ''; }
+    catch (error) { loadError = error.message; }
+    renderList();
+  }, { rootMargin: '400px 0px' });
+  listObserver.observe(sentinel);
 }
 
 const formatVodDuration = seconds => {
