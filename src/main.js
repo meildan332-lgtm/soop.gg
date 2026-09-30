@@ -236,7 +236,17 @@ async function resolveStreamer(query) {
   const entered = query.trim().replace(/^@/, '');
   const id = streamerAliases.get(entered) || entered;
   const local = streamers.find(s => s.soopId.toLowerCase() === id.toLowerCase() || s.nickname.toLowerCase() === entered.toLowerCase());
-  return local || addStreamer(id);
+  if (local) return local;
+
+  let remoteMatches = [];
+  try { remoteMatches = await searchStreamers(entered); } catch { /* SOOP ID 직접 조회를 계속 시도한다. */ }
+  const exact = remoteMatches.find(s =>
+    s.soopId.toLowerCase() === id.toLowerCase() || s.nickname.toLowerCase() === entered.toLowerCase()
+  );
+  if (exact) return exact;
+  if (remoteMatches.length) return remoteMatches[0];
+  if (/^[0-9A-Za-z_-]{2,40}$/.test(id)) return addStreamer(id);
+  throw new Error('스트리머를 찾을 수 없습니다.');
 }
 function bindDetailSearch() {
   document.querySelector('#detail-search')?.addEventListener('submit', async event => {
