@@ -93,7 +93,7 @@ function mapStationStatus(status, seed, detectedCategory = '') {
   return {
     ...seed,
     category: detectedCategory || seed.category || '기타',
-    categoryGroup: categoryGroup(detectedCategory || seed.category),
+    categoryGroup: seed.categoryGroup && seed.categoryGroup !== '기타' ? seed.categoryGroup : categoryGroup(detectedCategory || seed.category),
     nickname,
     initials: nickname.replace(/[^0-9A-Za-z가-힣]/g, '').slice(0, 2) || seed.soopId.slice(0, 2),
     profileImage: `https://profile.img.sooplive.co.kr/LOGO/${profilePrefix}/${profileId}/${profileId}.jpg`,
@@ -195,8 +195,9 @@ async function fetchDirectoryPage(page, category, pageSize) {
   return { ids, page, totalPages, totalCount: Number(result.TOTAL_CNT || result.TOTAL_COUNT) || totalPages * pageSize };
 }
 
-export async function loadStreamers({ reset = true, category = '전체' } = {}) {
-  if (streamersLoading) return streamers;
+let loadQueue = Promise.resolve();
+
+async function performLoadStreamers({ reset = true, category = '전체' } = {}) {
   streamersLoading = true;
   const requestedCategory = directoryCategory[category] || 'all';
   const requestedPageSize = 100;
@@ -231,7 +232,8 @@ export async function loadStreamers({ reset = true, category = '전체' } = {}) 
     for (const seed of seeds) {
       const status = statusById.get(seed.soopId.toLowerCase());
       if (!status) continue;
-      const streamer = mapStationStatus(status, seed);
+      const detectedCategory = categoryTranslations[status.category] || status.category || '';
+      const streamer = mapStationStatus(status, seed, detectedCategory);
       streamerCache.set(seed.soopId.toLowerCase(), streamer);
       loaded.push(streamer);
     }
@@ -256,6 +258,12 @@ export async function loadStreamers({ reset = true, category = '전체' } = {}) 
   lastUpdated = new Date();
   if (!streamers.length) throw new Error('SOOP 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
   return streamers;
+}
+
+export function loadStreamers(options = {}) {
+  const queuedLoad = loadQueue.catch(() => undefined).then(() => performLoadStreamers(options));
+  loadQueue = queuedLoad;
+  return queuedLoad;
 }
 
 export async function addStreamer(soopId) {

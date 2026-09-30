@@ -1,16 +1,20 @@
 const CATEGORY_TYPES = new Set(['all', 'game', 'talkcam', 'sports_general', 'mukbang', 'music', 'travel', 'study']);
 const STATION_STATUS_API = 'https://st.sooplive.com/api/get_station_status.php';
+const VOD_API = 'https://chapi.sooplive.com/api';
 
 async function fetchStationStatus(item) {
   try {
-    const response = await fetch(`${STATION_STATUS_API}?szBjId=${encodeURIComponent(item.user_id)}`, {
-      headers: { Accept: 'application/json', 'User-Agent': 'SOOP.GG fan ranking' },
-      signal: AbortSignal.timeout(8000)
-    });
+    const requestOptions = { headers: { Accept: 'application/json', 'User-Agent': 'SOOP.GG fan ranking' }, signal: AbortSignal.timeout(8000) };
+    const [response, vodResponse] = await Promise.all([
+      fetch(`${STATION_STATUS_API}?szBjId=${encodeURIComponent(item.user_id)}`, requestOptions),
+      fetch(`${VOD_API}/${encodeURIComponent(item.user_id)}/vods/all/streamer?page=1&per_page=1&orderby=reg_date`, requestOptions).catch(() => null)
+    ]);
     if (!response.ok) return null;
     const payload = await response.json();
     if (Number(payload.RESULT) !== 1 || !payload.DATA) return null;
-    return { ...payload.DATA, broad_no: item.broad_no || null };
+    const vodPayload = vodResponse?.ok ? await vodResponse.json().catch(() => null) : null;
+    const category = vodPayload?.data?.[0]?.ucc?.category_tags?.[0] || '';
+    return { ...payload.DATA, broad_no: item.broad_no || null, category };
   } catch {
     return null;
   }
