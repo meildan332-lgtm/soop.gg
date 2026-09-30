@@ -131,7 +131,7 @@ const streamerCache = new Map();
 let directoryPage = 0;
 let activeDirectoryCategory = 'all';
 let activePageSize = 100;
-const DIRECTORY_CACHE_KEY = 'soopgg-directory-v1';
+const DIRECTORY_CACHE_KEY = 'soopgg-directory-v2';
 const DIRECTORY_CACHE_MAX_AGE = 30 * 60 * 1000;
 
 const directoryCategory = {

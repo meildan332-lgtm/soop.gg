@@ -190,7 +190,9 @@ function renderDetail(id) {
   if (!s) { renderDetailError(id); return; }
   const info = getTierInfo(s.cumulativeUsers);
   const category = s.categoryGroup || s.category || '기타';
-  const overallRank = (!s.searchOnly && s.officialRank) || null;
+  const rankedStreamers = streamers.filter(item => !item.searchOnly).sort((a, b) => b.cumulativeUsers - a.cumulativeUsers);
+  const rankIndex = rankedStreamers.findIndex(item => item.soopId === s.soopId);
+  const overallRank = rankIndex >= 0 ? rankIndex + 1 : null;
   const rankBase = rankingPopulation;
   const topPercent = overallRank && rankBase ? Math.max(0.01, overallRank / rankBase * 100) : null;
   const stationUrl = `https://www.sooplive.com/station/${encodeURIComponent(s.soopId)}`;

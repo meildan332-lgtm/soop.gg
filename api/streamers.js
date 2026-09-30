@@ -58,7 +58,7 @@ export default async function handler(req, res) {
   const params = new URLSearchParams({
     keyword: '', sex_type: 'A', rank_type: category,
     min_viewer: '0', max_viewer: '100000', min_ytb: '0', max_ytb: '5000000',
-    page: String(page), page_row: String(pageSize), order_by: 'accu_user_count', type_sel_cnt: '1'
+    page: String(page), page_row: String(pageSize), order_by: 'fav_count', type_sel_cnt: '1'
   });
 
   try {

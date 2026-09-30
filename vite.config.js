@@ -9,7 +9,7 @@ export default defineConfig({
         rewrite: path => path.replace(/^\/api\/streamers/, '/api/mcnBj.php')
           .replace(/category=([^&]+)/, 'rank_type=$1')
           .replace(/pageSize=([^&]+)/, 'page_row=$1')
-          .replace(/page=([^&]+)/, 'page=$1&order_by=accu_user_count&keyword=&sex_type=A&min_viewer=0&max_viewer=100000&min_ytb=0&max_ytb=5000000&type_sel_cnt=1')
+          .replace(/page=([^&]+)/, 'page=$1&order_by=fav_count&keyword=&sex_type=A&min_viewer=0&max_viewer=100000&min_ytb=0&max_ytb=5000000&type_sel_cnt=1')
       },
       '/api/search': {
         target: 'https://partnership.sooplive.com',
