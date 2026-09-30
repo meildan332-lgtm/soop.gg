@@ -1,6 +1,24 @@
 const CATEGORY_TYPES = new Set(['all', 'game', 'talkcam', 'sports_general', 'mukbang', 'music', 'travel', 'study']);
 const STATION_STATUS_API = 'https://st.sooplive.com/api/get_station_status.php';
 const VOD_API = 'https://chapi.sooplive.com/api';
+const LIVE_API = 'https://live.sooplive.co.kr/afreeca/player_live_api.php';
+
+async function fetchLiveStatus(id) {
+  try {
+    const response = await fetch(LIVE_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'SOOP.GG fan ranking' },
+      body: new URLSearchParams({ bid: id, type: 'live', player_type: 'html5', stream_type: 'common', quality: 'HD' }),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!response.ok) return null;
+    const channel = (await response.json()).CHANNEL;
+    if (Number(channel?.RESULT) !== 1 || channel.BSTATUS !== 'BROADING') return null;
+    return channel;
+  } catch {
+    return null;
+  }
+}
 
 function dominantCategory(vods) {
   const counts = new Map();
@@ -14,16 +32,23 @@ function dominantCategory(vods) {
 async function fetchStationStatus(item) {
   try {
     const requestOptions = { headers: { Accept: 'application/json', 'User-Agent': 'SOOP.GG fan ranking' }, signal: AbortSignal.timeout(8000) };
-    const [response, vodResponse] = await Promise.all([
+    const [response, vodResponse, live] = await Promise.all([
       fetch(`${STATION_STATUS_API}?szBjId=${encodeURIComponent(item.user_id)}`, requestOptions),
-      fetch(`${VOD_API}/${encodeURIComponent(item.user_id)}/vods/all/streamer?page=1&per_page=24&orderby=reg_date`, requestOptions).catch(() => null)
+      fetch(`${VOD_API}/${encodeURIComponent(item.user_id)}/vods/all/streamer?page=1&per_page=24&orderby=reg_date`, requestOptions).catch(() => null),
+      item.broad_no ? fetchLiveStatus(item.user_id) : Promise.resolve(null)
     ]);
     if (!response.ok) return null;
     const payload = await response.json();
     if (Number(payload.RESULT) !== 1 || !payload.DATA) return null;
     const vodPayload = vodResponse?.ok ? await vodResponse.json().catch(() => null) : null;
     const category = dominantCategory(vodPayload);
-    return { ...payload.DATA, broad_no: item.broad_no || null, category };
+    return {
+      ...payload.DATA,
+      broad_no: live?.BNO || item.broad_no || null,
+      live_title: live?.TITLE || '',
+      live_viewers: Number(live?.CTUSER) || 0,
+      category
+    };
   } catch {
     return null;
   }
@@ -52,7 +77,7 @@ export default async function handler(req, res) {
     if (category === 'all' && page === 1) ids = ['y1026', ...ids.filter(id => id !== 'y1026')].slice(0, pageSize);
     const itemById = new Map(directoryItems.map(item => [item.user_id, item]));
     const streamers = (await Promise.all(ids.map(id => fetchStationStatus(itemById.get(id) || { user_id: id })))).filter(Boolean);
-    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
+    res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=30');
     res.status(200).json({
       ids,
       streamers,
