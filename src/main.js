@@ -200,7 +200,18 @@ function renderDetailError(id) {
   bindHome(); bindDetailSearch();
 }
 
-function navigate(id) { history.pushState({}, '', `/streamer/${id}`); renderDetail(id); window.scrollTo(0,0); }
+async function navigate(id) {
+  history.pushState({}, '', `/streamer/${id}`);
+  renderDetail(id);
+  window.scrollTo(0,0);
+  const streamer = streamers.find(item => item.soopId === id);
+  if (!streamer?.vodsLoaded) {
+    try {
+      await loadStreamerVods(id, 1);
+      if (location.pathname === `/streamer/${encodeURIComponent(id)}` || location.pathname === `/streamer/${id}`) renderDetail(id);
+    } catch { /* 상세 기본 정보는 그대로 표시한다. */ }
+  }
+}
 async function openCategory(category) {
   state.view = 'category';
   state.category = category;

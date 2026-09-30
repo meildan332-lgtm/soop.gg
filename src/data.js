@@ -1,4 +1,3 @@
-const SOOP_API = 'https://chapi.sooplive.com/api';
 const MAX_STREAMERS = 1000;
 
 const rankedIds = `devil0108 lshooooo bigbigjo2 khm11903 rlaeogus200 120510 kissday621 rrvv17 wnnw no3miggi qpwo164 sccha21 horusb zpdl1313 ch1716 jdm1197 dlgksquf159 guslgood2 seokwngud galsa skswhdkgo janjju phonics1 killgusdnk nila25 spbabobj goata111789 yunheehoho leesh2148 zkwks4413 rlaxordyd yuambo bebe010 ecvhao pig2704 joey1114 dkssyddleid aay2014 dpfgc3 eunz1nara sol3712 kimdhun b13246 isauria pi0314 since821 feel0100 gusdk2362 djsrhkwl dlghfjs gyeonjahee partypeople sang033 lyj9306 parang58 m0m099 beatjungle1 unitelshaki rlrlvkvk123 030b1004 skswldms kdb1223 zzzz4422 ansguswns519 lyl9095 thseogks1 jaedong23 1004suna vlfrl2 pookygamja e000e77 wannabe33 moonwol0614 asy1218 gosegu2 eunyoung1238 kogo0512 ehdgkr6283 horidda ksh14 lovely5959 axiaxi umj4635 sky2713 giltae1124 nada11200 sas2055 townboy gtv7 lilpa0309 rkdakstlr911 arinbbidol dmsco39 ayoona jingburger1 golaniyule0 ghth6009 viichan6 jeehyeoun cotton1217`.split(' ');
@@ -84,41 +83,7 @@ function vodMeta(vods) {
   };
 }
 
-function mapStation(data, seed, detectedCategory = '', vods = []) {
-  const station = data.station;
-  if (!station?.upd) throw new Error('채널 정보를 찾을 수 없습니다.');
-  const nickname = cleanText(station.user_nick || station.station_name || seed.soopId);
-  const cumulativeUsers = Number(station.upd.total_view_cnt) || 0;
-  const point = { label: '현재', value: cumulativeUsers };
-
-  return {
-    ...seed,
-    category: detectedCategory || seed.category || '기타',
-    categoryGroup: categoryGroup(detectedCategory || seed.category),
-    nickname,
-    initials: nickname.replace(/[^0-9A-Za-z가-힣]/g, '').slice(0, 2) || seed.soopId.slice(0, 2),
-    profileImage: absoluteImage(data.profile_image || station.profile_image),
-    cumulativeUsers,
-    delta: 0,
-    isLive: Boolean(data.broad),
-    liveViewers: Number(data.broad?.current_sum_viewer) || 0,
-    liveTitle: cleanText(data.broad?.broad_title || ''),
-    broadNo: data.broad?.broad_no || null,
-    liveThumbnail: data.broad?.broad_no ? `https://liveimg.sooplive.com/m/${data.broad.broad_no}.jpg` : '',
-    lastUpdated: data.current_timestamp ? `${data.current_timestamp}+09:00` : new Date().toISOString(),
-    totalBroadcastHours: Math.round((Number(station.total_broad_time) || 0) / 3600),
-    followers: Number(station.upd.fan_cnt) || 0,
-    subscribers: { basic: Number(data.subscription?.tier1) || 0, plus: Number(data.subscription?.tier2) || 0 },
-    fanClub: null,
-    vods: mapVods(vods),
-    vodMeta: vodMeta(vods),
-    history: { daily: [point], monthly: [point], yearly: [point] },
-    stationTitle: cleanText(station.station_title || ''),
-    dataSource: 'SOOP 공개 채널 API'
-  };
-}
-
-function mapStationStatus(status, seed) {
+function mapStationStatus(status, seed, detectedCategory = '') {
   const nickname = cleanText(status.user_nick || status.station_name || seed.soopId);
   const cumulativeUsers = Number(status.total_view_cnt) || 0;
   const point = { label: '현재', value: cumulativeUsers };
@@ -127,6 +92,8 @@ function mapStationStatus(status, seed) {
 
   return {
     ...seed,
+    category: detectedCategory || seed.category || '기타',
+    categoryGroup: categoryGroup(detectedCategory || seed.category),
     nickname,
     initials: nickname.replace(/[^0-9A-Za-z가-힣]/g, '').slice(0, 2) || seed.soopId.slice(0, 2),
     profileImage: `https://profile.img.sooplive.co.kr/LOGO/${profilePrefix}/${profileId}/${profileId}.jpg`,
@@ -144,6 +111,7 @@ function mapStationStatus(status, seed) {
     fanClub: null,
     vods: [],
     vodMeta: { currentPage: 1, lastPage: 1, total: 0 },
+    vodsLoaded: false,
     history: { daily: [point], monthly: [point], yearly: [point] },
     stationTitle: cleanText(status.station_title || ''),
     dataSource: 'SOOP 공개 채널 상태 API'
@@ -178,27 +146,32 @@ export async function fetchStreamer(soopId, overrides = {}) {
   };
   const requestOptions = { headers: { Accept: 'application/json' }, credentials: 'omit' };
   const [stationResponse, vodResponse] = await Promise.all([
-    fetch(`${SOOP_API}/${encodeURIComponent(id)}/station`, requestOptions),
-    fetch(`${SOOP_API}/${encodeURIComponent(id)}/vods/all/streamer?page=1&per_page=24&orderby=reg_date`, requestOptions).catch(() => null)
+    fetch(`/api/station?id=${encodeURIComponent(id)}`, requestOptions),
+    fetch(`/api/vods?id=${encodeURIComponent(id)}&page=1`, requestOptions).catch(() => null)
   ]);
   if (!stationResponse.ok) throw new Error('SOOP 채널 정보를 불러오지 못했습니다.');
-  const [stationData, vodData] = await Promise.all([
+  const [stationPayload, vodData] = await Promise.all([
     stationResponse.json(),
     vodResponse?.ok ? vodResponse.json().catch(() => null) : null
   ]);
-  const streamer = mapStation(stationData, { soopId: id, category: '기타', accent: '#7968ff', ...overrides }, primaryCategory(vodData), vodData);
+  const status = stationPayload.status || stationPayload.DATA;
+  if (!status) throw new Error('SOOP 채널 정보를 불러오지 못했습니다.');
+  const streamer = mapStationStatus(status, { soopId: id, category: '기타', accent: '#7968ff', ...overrides }, primaryCategory(vodData));
+  streamer.vods = mapVods(vodData);
+  streamer.vodMeta = vodMeta(vodData);
+  streamer.vodsLoaded = Boolean(vodData);
   streamerCache.set(id.toLowerCase(), streamer);
   return streamer;
 }
 
 export async function loadStreamerVods(soopId, page = 1) {
   const id = String(soopId || '').trim();
-  const response = await fetch(`${SOOP_API}/${encodeURIComponent(id)}/vods/all/streamer?page=${Math.max(1, Number(page) || 1)}&per_page=24&orderby=reg_date`, {
+  const response = await fetch(`/api/vods?id=${encodeURIComponent(id)}&page=${Math.max(1, Number(page) || 1)}`, {
     headers: { Accept: 'application/json' }, credentials: 'omit'
   });
   if (!response.ok) throw new Error('VOD 목록을 불러오지 못했습니다.');
   const payload = await response.json();
-  const update = { vods: mapVods(payload), vodMeta: vodMeta(payload) };
+  const update = { vods: mapVods(payload), vodMeta: vodMeta(payload), vodsLoaded: true };
   const key = id.toLowerCase();
   const cached = streamerCache.get(key);
   if (cached) streamerCache.set(key, { ...cached, ...update });
