@@ -68,10 +68,11 @@ function searchMatches(query) {
 function row(s, index) {
   const info = getTierInfo(s.cumulativeUsers);
   const rank = index + 1;
+  const category = s.categoryGroup || s.category || '기타';
   return `<article class="streamer-row" tabindex="0" role="link" data-streamer="${s.soopId}" aria-label="${escapeHtml(s.nickname)} 상세 보기">
     <div class="rank ${rank <= 3 ? 'top' : ''}"><small>RANK</small><strong>${String(rank).padStart(2,'0')}</strong></div>
     <div class="identity">${avatar(s)}<div><strong>${escapeHtml(s.nickname)}</strong><span>@${escapeHtml(s.soopId)}</span></div></div>
-    <span class="category">${escapeHtml(s.category)}</span>
+    <span class="category">${escapeHtml(category)}</span>
     <div class="tier">${medal(info.current)}<div><strong style="color:${info.current.color}">${info.current.name}</strong><span>${info.next ? `다음 ${info.next.name}` : '최고 등급 달성'}</span></div></div>
     <div class="users"><strong>${formatCompact(s.cumulativeUsers)}</strong><span>${s.cumulativeUsers.toLocaleString('ko-KR')}명</span></div>
     <div class="goal"><div><span>${info.next ? `${formatCompact(info.remaining)} 남음` : '최고 등급'}</span><strong>${info.progress.toFixed(1)}%</strong></div><div class="progress"><i style="width:${info.progress}%;--tier:${info.current.color}"></i></div></div>
@@ -152,6 +153,7 @@ function renderDetail(id) {
   const s = streamers.find(x => x.soopId === id);
   if (!s) { renderDetailError(id); return; }
   const info = getTierInfo(s.cumulativeUsers);
+  const category = s.categoryGroup || s.category || '기타';
   const overallRank = (!s.searchOnly && s.officialRank) || null;
   const rankBase = rankingPopulation;
   const topPercent = overallRank && rankBase ? Math.max(0.01, overallRank / rankBase * 100) : null;
@@ -159,7 +161,7 @@ function renderDetail(id) {
   const liveUrl = s.broadNo ? `https://play.sooplive.com/${encodeURIComponent(s.soopId)}/${s.broadNo}` : stationUrl;
   const livePanel = s.isLive ? `<a class="live-card" href="${liveUrl}" target="_blank" rel="noopener noreferrer"><span class="live-thumb" style="--accent:${s.accent}"><img src="${escapeHtml(s.liveThumbnail)}" alt="${escapeHtml(s.nickname)} 라이브 방송 썸네일" referrerpolicy="no-referrer"/><b><i></i> ${s.liveViewers.toLocaleString('ko-KR')}</b><strong>${escapeHtml(s.initials)}</strong></span><span class="live-title"><i>LIVE</i><span>${escapeHtml(s.liveTitle || '현재 라이브 방송')}</span></span></a>` : `<a class="station" href="${stationUrl}" target="_blank" rel="noopener noreferrer">SOOP 방송국 바로가기</a>`;
   app.innerHTML = `${header(true)}<main class="detail"><button class="back" data-home>‹ 전체 랭킹으로</button>
-    <section class="profile-hero"><div class="profile-main">${rankedAvatar(s, info.current)}<div><span class="category">${s.category}</span><h1>${escapeHtml(s.nickname)}</h1><p>@${escapeHtml(s.soopId)}${overallRank ? `<span class="profile-rank-text">전체 ${overallRank.toLocaleString('ko-KR')}위${topPercent == null ? '' : ` · 상위 ${topPercent < 0.1 ? topPercent.toFixed(2) : topPercent.toFixed(1)}%`}</span>` : ''}</p></div></div>${livePanel}</section>
+    <section class="profile-hero"><div class="profile-main">${rankedAvatar(s, info.current)}<div><span class="category">${escapeHtml(category)}</span><h1>${escapeHtml(s.nickname)}</h1><p>@${escapeHtml(s.soopId)}${overallRank ? `<span class="profile-rank-text">전체 ${overallRank.toLocaleString('ko-KR')}위${topPercent == null ? '' : ` · 상위 ${topPercent < 0.1 ? topPercent.toFixed(2) : topPercent.toFixed(1)}%`}</span>` : ''}</p></div></div>${livePanel}</section>
     <section class="profile-stats" aria-label="스트리머 주요 정보">
       <article><div><small>총 방송 시간</small><strong>${s.totalBroadcastHours.toLocaleString('ko-KR')}<i>시간</i></strong></div></article>
       <article><div><small>누적 유저</small><strong>${s.cumulativeUsers.toLocaleString('ko-KR')}<i>명</i></strong></div></article>
