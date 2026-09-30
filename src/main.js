@@ -86,6 +86,11 @@ function tierGuideModal() {
     <div class="tier-guide-dialog">
       <div class="tier-guide-header"><strong id="tier-guide-title">등급 및 도달 기준</strong><button type="button" id="tier-guide-close" aria-label="등급표 닫기">×</button></div>
       <img src="/brand/tier-guide.png" alt="누적 유저 수에 따른 실버, 골드, 플래티넘, 에메랄드, 다이아, 프레스티지 등급 도달 기준표"/>
+      <section class="category-guide" aria-labelledby="category-guide-title">
+        <h3 id="category-guide-title">카테고리 분류 기준</h3>
+        <p>최근 공개 VOD 최대 24개의 첫 번째 카테고리 태그를 집계해 가장 비율이 높은 항목으로 분류합니다. 비율이 같으면 더 최근 VOD의 태그를 우선하며, 공개 VOD나 태그가 없으면 기타로 표시합니다.</p>
+        <ul><li>세부 게임명은 모두 <strong>게임</strong>으로 통합</li><li>Talk/Cam은 <strong>보이는 라디오</strong>로 통합</li><li>Mukbang·Food는 <strong>먹방/쿡방</strong>으로 통합</li></ul>
+      </section>
     </div>
   </div>`;
 }
