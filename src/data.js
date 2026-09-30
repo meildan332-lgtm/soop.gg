@@ -106,7 +106,7 @@ function mapStationStatus(status, seed, detectedCategory = '') {
     liveViewers: Number(status.live_viewers) || 0,
     liveTitle: cleanText(status.live_title || ''),
     broadNo: status.broad_no || null,
-    liveThumbnail: status.broad_no ? `https://liveimg.sooplive.com/m/${status.broad_no}.jpg` : '',
+    liveThumbnail: status.broad_no ? `https://liveimg.sooplive.com/h/${status.broad_no}.jpg` : '',
     lastUpdated: new Date().toISOString(),
     totalBroadcastHours: Math.round((Number(status.total_broad_time) || 0) / 3600),
     followers: Number(status.fan_cnt) || 0,
