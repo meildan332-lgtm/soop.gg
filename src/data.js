@@ -22,7 +22,7 @@ const categoryTranslations = {
   'Overwatch': '오버워치',
   'Valorant': '발로란트',
   'Minecraft': '마인크래프트',
-  'Talk/Cam': '토크/캠방',
+  'Talk/Cam': '보이는 라디오',
   'Virtual': '버추얼',
   'Music': '음악',
   'Sports': '스포츠',
@@ -45,14 +45,8 @@ function categoryGroup(category) {
 }
 
 function primaryCategory(vods) {
-  const counts = new Map();
-  for (const vod of vods?.data || []) {
-    const raw = cleanText(vod?.ucc?.category_tags?.[0]);
-    if (!raw) continue;
-    const label = categoryTranslations[raw] || raw;
-    counts.set(label, (counts.get(label) || 0) + 1);
-  }
-  return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+  const raw = cleanText(vods?.data?.[0]?.ucc?.category_tags?.[0]);
+  return categoryTranslations[raw] || raw;
 }
 
 function mapVods(vods) {
