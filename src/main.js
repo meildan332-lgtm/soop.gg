@@ -1,6 +1,6 @@
 import './styles.css';
 import './emblem-overrides.css';
-import { streamers, categories, loadStreamers, addStreamer, searchStreamers, loadStreamerVods, hasMoreStreamers, autoLoadStreamers, rankingPopulation } from './data.js';
+import { streamers, categories, loadStreamers, addStreamer, refreshStreamer, searchStreamers, loadStreamerVods, hasMoreStreamers, autoLoadStreamers, rankingPopulation } from './data.js';
 import { getTierInfo, formatCompact } from './tiers.js';
 
 const app = document.querySelector('#app');
@@ -367,6 +367,8 @@ async function route() {
     const id = decodeURIComponent(match[1]);
     if (!streamers.some(s => s.soopId === id)) {
       try { await addStreamer(id); } catch { renderDetailError(id); return; }
+    } else if (!streamers.find(s => s.soopId === id)?.vodsLoaded) {
+      try { await refreshStreamer(id); } catch { /* 저장된 기본 정보로 상세 화면을 표시한다. */ }
     }
   }
   const current = location.pathname.match(/^\/streamer\/([^/]+)/);
@@ -374,4 +376,4 @@ async function route() {
 }
 
 app.innerHTML = `<main class="loading-state"><img src="/brand/soopgg-logo.png" alt="SOOP.GG"/><strong>SOOP에서 데이터를 불러오고 있습니다</strong></main>`;
-loadStreamers().then(route).catch(error => { loadError = error.message; renderList(); });
+(streamers.length ? Promise.resolve(streamers) : loadStreamers()).then(route).catch(error => { loadError = error.message; renderList(); });

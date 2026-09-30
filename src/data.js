@@ -131,6 +131,8 @@ const streamerCache = new Map();
 let directoryPage = 0;
 let activeDirectoryCategory = 'all';
 let activePageSize = 100;
+const DIRECTORY_CACHE_KEY = 'soopgg-directory-v1';
+const DIRECTORY_CACHE_MAX_AGE = 30 * 60 * 1000;
 
 const directoryCategory = {
   '전체': 'all', '게임': 'game', '버추얼': 'all', '보이는 라디오': 'talkcam',
@@ -138,15 +140,58 @@ const directoryCategory = {
   '여행': 'travel', '교육/정보': 'study', '기타': 'all'
 };
 
+function persistDirectoryCache() {
+  try {
+    const cachedStreamers = streamers.filter(item => !item.searchOnly).map(item => ({
+      ...item,
+      vods: [],
+      vodMeta: { currentPage: 1, lastPage: 1, total: 0 },
+      vodsLoaded: false
+    }));
+    sessionStorage.setItem(DIRECTORY_CACHE_KEY, JSON.stringify({
+      savedAt: Date.now(),
+      streamers: cachedStreamers,
+      directoryPage,
+      activeDirectoryCategory,
+      activePageSize,
+      hasMoreStreamers,
+      autoLoadStreamers,
+      rankingPopulation,
+      lastUpdated: lastUpdated?.toISOString() || null
+    }));
+  } catch { /* 저장 공간이 부족하면 메모리 목록만 유지한다. */ }
+}
+
+function restoreDirectoryCache() {
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(DIRECTORY_CACHE_KEY) || 'null');
+    if (!cached || Date.now() - Number(cached.savedAt) > DIRECTORY_CACHE_MAX_AGE || !Array.isArray(cached.streamers)) return;
+    streamers = cached.streamers;
+    directoryPage = Math.max(0, Number(cached.directoryPage) || 0);
+    activeDirectoryCategory = cached.activeDirectoryCategory || 'all';
+    activePageSize = Number(cached.activePageSize) || 100;
+    hasMoreStreamers = cached.hasMoreStreamers !== false;
+    autoLoadStreamers = cached.autoLoadStreamers !== false;
+    rankingPopulation = Number(cached.rankingPopulation) || 0;
+    lastUpdated = cached.lastUpdated ? new Date(cached.lastUpdated) : null;
+    for (const streamer of streamers) streamerCache.set(streamer.soopId.toLowerCase(), streamer);
+  } catch {
+    try { sessionStorage.removeItem(DIRECTORY_CACHE_KEY); } catch { /* ignore */ }
+  }
+}
+
+restoreDirectoryCache();
+
 export async function fetchStreamer(soopId, overrides = {}) {
   const id = String(soopId || '').trim().replace(/^@/, '');
   if (!/^[0-9A-Za-z_-]{2,40}$/.test(id)) throw new Error('올바른 SOOP ID를 입력해 주세요.');
+  const { forceRefresh = false, ...streamerOverrides } = overrides;
   const cached = streamerCache.get(id.toLowerCase());
-  if (cached) return {
+  if (cached && !forceRefresh) return {
     ...cached,
     soopId: id,
-    accent: overrides.accent || cached.accent,
-    officialRank: overrides.officialRank || cached.officialRank
+    accent: streamerOverrides.accent || cached.accent,
+    officialRank: streamerOverrides.officialRank || cached.officialRank
   };
   const requestOptions = { headers: { Accept: 'application/json' }, credentials: 'omit' };
   const [stationResponse, vodResponse] = await Promise.all([
@@ -160,7 +205,7 @@ export async function fetchStreamer(soopId, overrides = {}) {
   ]);
   const status = stationPayload.status || stationPayload.DATA;
   if (!status) throw new Error('SOOP 채널 정보를 불러오지 못했습니다.');
-  const streamer = mapStationStatus(status, { soopId: id, category: '기타', accent: '#7968ff', ...overrides }, primaryCategory(vodData));
+  const streamer = mapStationStatus(status, { soopId: id, category: '기타', accent: '#7968ff', ...streamerOverrides }, primaryCategory(vodData));
   streamer.vods = mapVods(vodData);
   streamer.vodMeta = vodMeta(vodData);
   streamer.vodsLoaded = Boolean(vodData);
@@ -261,6 +306,7 @@ async function performLoadStreamers({ reset = true, category = '전체' } = {}) 
   if (loaded.some(item => item.followers < AUTOLOAD_MIN_FOLLOWERS)) autoLoadStreamers = false;
   streamersLoading = false;
   lastUpdated = new Date();
+  persistDirectoryCache();
   if (!streamers.length) throw new Error('SOOP 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
   return streamers;
 }
@@ -278,6 +324,20 @@ export async function addStreamer(soopId) {
   streamers = [...streamers, streamer];
   lastUpdated = new Date();
   return streamer;
+}
+
+export async function refreshStreamer(soopId) {
+  const existing = streamers.find(item => item.soopId.toLowerCase() === soopId.toLowerCase());
+  const refreshed = await fetchStreamer(soopId, {
+    forceRefresh: true,
+    accent: existing?.accent,
+    officialRank: existing?.officialRank,
+    category: existing?.category,
+    categoryGroup: existing?.categoryGroup,
+    searchOnly: existing?.searchOnly
+  });
+  streamers = streamers.map(item => item.soopId.toLowerCase() === soopId.toLowerCase() ? refreshed : item);
+  return refreshed;
 }
 
 export async function searchStreamers(keyword) {
