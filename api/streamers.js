@@ -2,18 +2,27 @@ const CATEGORY_TYPES = new Set(['all', 'game', 'talkcam', 'sports_general', 'muk
 const STATION_STATUS_API = 'https://st.sooplive.com/api/get_station_status.php';
 const VOD_API = 'https://chapi.sooplive.com/api';
 
+function dominantCategory(vods) {
+  const counts = new Map();
+  for (const vod of vods?.data || []) {
+    const category = String(vod?.ucc?.category_tags?.[0] || '').trim();
+    if (category) counts.set(category, (counts.get(category) || 0) + 1);
+  }
+  return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+}
+
 async function fetchStationStatus(item) {
   try {
     const requestOptions = { headers: { Accept: 'application/json', 'User-Agent': 'SOOP.GG fan ranking' }, signal: AbortSignal.timeout(8000) };
     const [response, vodResponse] = await Promise.all([
       fetch(`${STATION_STATUS_API}?szBjId=${encodeURIComponent(item.user_id)}`, requestOptions),
-      fetch(`${VOD_API}/${encodeURIComponent(item.user_id)}/vods/all/streamer?page=1&per_page=1&orderby=reg_date`, requestOptions).catch(() => null)
+      fetch(`${VOD_API}/${encodeURIComponent(item.user_id)}/vods/all/streamer?page=1&per_page=24&orderby=reg_date`, requestOptions).catch(() => null)
     ]);
     if (!response.ok) return null;
     const payload = await response.json();
     if (Number(payload.RESULT) !== 1 || !payload.DATA) return null;
     const vodPayload = vodResponse?.ok ? await vodResponse.json().catch(() => null) : null;
-    const category = vodPayload?.data?.[0]?.ucc?.category_tags?.[0] || '';
+    const category = dominantCategory(vodPayload);
     return { ...payload.DATA, broad_no: item.broad_no || null, category };
   } catch {
     return null;

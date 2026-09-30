@@ -24,6 +24,8 @@ const categoryTranslations = {
   'Minecraft': '마인크래프트',
   'Talk/Cam': '보이는 라디오',
   'Virtual': '버추얼',
+  'Mukbang': '먹방/쿡방',
+  'Food': '먹방/쿡방',
   'Music': '음악',
   'Sports': '스포츠',
   'Travel': '여행'
@@ -45,8 +47,14 @@ function categoryGroup(category) {
 }
 
 function primaryCategory(vods) {
-  const raw = cleanText(vods?.data?.[0]?.ucc?.category_tags?.[0]);
-  return categoryTranslations[raw] || raw;
+  const counts = new Map();
+  for (const vod of vods?.data || []) {
+    const raw = cleanText(vod?.ucc?.category_tags?.[0]);
+    if (!raw) continue;
+    const label = categoryTranslations[raw] || raw;
+    counts.set(label, (counts.get(label) || 0) + 1);
+  }
+  return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
 }
 
 function mapVods(vods) {
